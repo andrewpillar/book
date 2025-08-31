@@ -1,0 +1,27 @@
+.DOCTITLE   "{{.Title}}"
+.PRINTSTYLE {{.PrintStyle}}
+{{- if len .Author.Contact}}
+.LEFT
+{{- range .Author.Contact}}
+{{. -}}
+{{end}}
+{{- end}}
+{{- if and (.WordCount) (eq .PrintStyle "TYPEWRITE")}}
+.RIGHT
+{{- if len .Author.Contact}}
+.SP -{{len .Author.Contact}}v
+{{- end}}
+Word count: {{.WordCount | format_number}}
+{{- end}}
+.TITLE     DOC_COVER "\*[$DOCTITLE]"
+{{if .Subtitle}}.SUBTITLE  "{{.Subtitle}}"{{end}}
+.AUTHOR    "{{.Author.Name}}"
+.COPYRIGHT DOC_COVER "{{now.Year}} \*[$AUTHOR]"
+.DOC_COVER TITLE {{if .Subtitle}}SUBTITLE{{end}} AUTHOR COPYRIGHT
+.DOCTYPE   CHAPTER
+.TITLE     "\*[$DOCTITLE]"
+{{range .Chapters}}
+.DOCTYPE CHAPTER
+.CHAPTER_TITLE "{{.Title}}"
+{{.Content}}
+{{end}}
