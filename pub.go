@@ -110,35 +110,47 @@ func pubCmd(cmd *Command, args []string) error {
 			return err
 		}
 
-		title, err := doc.AddHeading(ms.Title, 0)
+		font := "Times New Roman"
+		paraSize := uint64(12)
+		titleSize := uint64(18)
+
+		for i := 0; i < 8; i++ {
+			doc.AddParagraph("").AddText("").Size(titleSize)
+		}
+
+		title, err := doc.AddHeading("", 0)
 
 		if err != nil {
 			return err
 		}
 
 		title.Justification(stypes.JustificationCenter)
+		title.AddText(ms.Title).Bold(true).Italic(true).Font(font).Color("#000000").Size(titleSize)
 
-		doc.AddParagraph("").AddText("by").Italic(true)
-		doc.AddParagraph("").AddText(ms.Author).Italic(true)
+		for _, s := range []string{"by", ms.Author} {
+			p := doc.AddParagraph("")
+			p.Justification(stypes.JustificationCenter)
+			p.AddText(s).Italic(true).Font(font).Size(paraSize)
+		}
 
 		doc.AddPageBreak()
 
 		for _, ch := range ms.Chapters {
-			title, err := doc.AddHeading(ch.Title, 1)
+			title, err := doc.AddHeading("", 1)
 
 			if err != nil {
 				return err
 			}
 
 			title.Justification(stypes.JustificationCenter)
+			title.AddText(ch.Title).Bold(true).Italic(true).Font(font).Color("#000000").Size(titleSize)
 
 			for i, p := range ch.Paragraphs() {
 				if i != 0 {
 					p = "\t" + p
 				}
-				doc.AddParagraph(p)
+				doc.AddParagraph("").AddText(p).Font(font).Size(paraSize)
 			}
-
 			doc.AddPageBreak()
 		}
 
