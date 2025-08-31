@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gomutex/godocx"
+	"github.com/gomutex/godocx/wml/ctypes"
 	"github.com/gomutex/godocx/wml/stypes"
 )
 
@@ -49,6 +50,16 @@ func ManuscriptTemplate() (*template.Template, error) {
 	})
 
 	return tmpl.Parse(string(manuscriptTmpl))
+}
+
+func docxParaProp() *ctypes.ParagraphProp {
+	n := 500
+
+	prop := ctypes.DefaultParaProperty()
+	prop.Spacing = &ctypes.Spacing{
+		Line: &n,
+	}
+	return prop
 }
 
 func pubCmd(cmd *Command, args []string) error {
@@ -110,6 +121,18 @@ func pubCmd(cmd *Command, args []string) error {
 			return err
 		}
 
+		margin := 1500
+
+		doc.Document.Body.SectPr.PageMargin.Left = &margin
+		doc.Document.Body.SectPr.PageMargin.Right = &margin
+
+		doc.Document.Body.SectPr.FooterReference = &ctypes.FooterReference{
+			Type: stypes.HdrFtrDefault,
+		}
+		doc.Document.Body.SectPr.PageNum = &ctypes.PageNumbering{
+			Format: stypes.NumFmtDecimal,
+		}
+
 		font := "Times New Roman"
 		paraSize := uint64(12)
 		titleSize := uint64(18)
@@ -142,14 +165,18 @@ func pubCmd(cmd *Command, args []string) error {
 				return err
 			}
 
+			title.GetCT().Property = docxParaProp()
 			title.Justification(stypes.JustificationCenter)
 			title.AddText(ch.Title).Bold(true).Italic(true).Font(font).Color("#000000").Size(titleSize)
 
-			for i, p := range ch.Paragraphs() {
+			for i, txt := range ch.Paragraphs() {
 				if i != 0 {
-					p = "\t" + p
+					txt = "\t" + txt
 				}
-				doc.AddParagraph("").AddText(p).Font(font).Size(paraSize)
+
+				p := doc.AddParagraph("")
+				p.GetCT().Property = docxParaProp()
+				p.AddText(txt).Font(font).Size(paraSize)
 			}
 			doc.AddPageBreak()
 		}
