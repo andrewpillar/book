@@ -21,11 +21,8 @@ import (
 var PubCmd = &Command{
 	Usage: "pub <-f docx|pdf> <file> [chapter,...]",
 	Short: "publish the manuscript into a pdf",
-	Long: `Publish the manuscript into a PDF. This will use groff under the hood to print
-out the PDF.
-
-The -f flag specifies the format into which the manuscript should be published.
-This accepts either docx or pdf.`,
+	Long: `Publish the manuscript into the given format, either docx or pdf as specified via
+the -f flag. If pdf, then groff is used under the hood to produce the final pdf.`,
 	Run: pubCmd,
 }
 
@@ -123,7 +120,7 @@ func pubCmd(cmd *Command, args []string) error {
 			return err
 		}
 
-		margin := 1400
+		margin := 1300
 
 		doc.Document.Body.SectPr.PageMargin.Left = &margin
 		doc.Document.Body.SectPr.PageMargin.Right = &margin
