@@ -53,11 +53,13 @@ func ManuscriptTemplate() (*template.Template, error) {
 }
 
 func docxParaProp() *ctypes.ParagraphProp {
-	n := 500
+	line := 500
+	after := uint64(0)
 
 	prop := ctypes.DefaultParaProperty()
 	prop.Spacing = &ctypes.Spacing{
-		Line: &n,
+		Line:  &line,
+		After: &after,
 	}
 	return prop
 }
@@ -121,14 +123,11 @@ func pubCmd(cmd *Command, args []string) error {
 			return err
 		}
 
-		margin := 1500
+		margin := 1400
 
 		doc.Document.Body.SectPr.PageMargin.Left = &margin
 		doc.Document.Body.SectPr.PageMargin.Right = &margin
 
-		doc.Document.Body.SectPr.FooterReference = &ctypes.FooterReference{
-			Type: stypes.HdrFtrDefault,
-		}
 		doc.Document.Body.SectPr.PageNum = &ctypes.PageNumbering{
 			Format: stypes.NumFmtDecimal,
 		}
