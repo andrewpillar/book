@@ -168,6 +168,12 @@ func pubCmd(cmd *Command, args []string) error {
 			title.Justification(stypes.JustificationCenter)
 			title.AddText(ch.Title).Bold(true).Italic(true).Font(font).Color("#000000").Size(titleSize)
 
+			for _, txt := range ch.Epigraph() {
+				p := doc.AddParagraph("")
+				p.Justification(stypes.JustificationCenter)
+				p.AddText(txt).Font(font).Size(paraSize)
+			}
+
 			for i, txt := range ch.Paragraphs() {
 				if i != 0 {
 					txt = "\t" + txt

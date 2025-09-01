@@ -233,6 +233,33 @@ func (c *Chapter) Text() string {
 	return buf.String()
 }
 
+func (c *Chapter) Epigraph() []string {
+	lines := make([]string, 0)
+
+	c.Buffer.Seek(c.Start)
+
+	for {
+		line, ok := c.Buffer.Line()
+
+		if !ok || line == ".COLLATE" {
+			return nil
+		}
+
+		if line == ".EPIGRAPH" {
+			for {
+				line, ok = c.Buffer.Line()
+
+				if !ok || line == ".EPIGRAPH OFF" {
+					break
+				}
+				lines = append(lines, line)
+			}
+			break
+		}
+	}
+	return lines
+}
+
 func (c *Chapter) Paragraphs() []string {
 	paragraphs := make([]string, 0)
 
@@ -264,6 +291,28 @@ func (c *Chapter) Paragraphs() []string {
 
 			if m.Name == "DROPCAP" {
 				buf.WriteString(m.Args[0])
+			}
+
+			if m.Name == "EPIGRAPH" {
+				line, ok = c.Buffer.Line()
+
+				if !ok || line == ".COLLATE" {
+					break
+				}
+
+				for {
+					line, ok = c.Buffer.Line()
+
+					if !ok {
+						break
+					}
+
+					if line != "" {
+						if line == ".EPIGRAPH OFF" {
+							break
+						}
+					}
+				}
 			}
 
 			if m.Name == "PP" {
