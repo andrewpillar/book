@@ -15,6 +15,7 @@ var LsCmd = &Command{
 The -n flag will display chapter numbers.
 
 The -wc flag will print the word count of each chapter.`,
+	Run: lsCmd,
 }
 
 func lsCmd(cmd *Command, args []string) error {
