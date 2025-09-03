@@ -110,3 +110,21 @@ To publish in the DOCX format, simply specify it via the `-f` flag with the
 
     $ book pub -f docx dracula.mom
     dracula.docx
+
+### A note on DOCX
+
+The manuscript produced in the DOCX format will not have formatting parity with
+the PDF format. At the bare minimum it will ensure:
+
+* Times New Roman
+* Font size 12pt
+* Double spaced lines
+
+There are many features available via the groff mom macro set that are not
+implemented in the DOCX format produced via book. Under the hood this uses the
+[godocx][] library for producing DOCX files, which itself was inspired by the
+[python-docx][] library.
+
+[godocx]: https://pkg.go.dev/github.com/gomutex/godocx
+
+[python-docx]: https://python-docx.readthedocs.io/en/latest/
