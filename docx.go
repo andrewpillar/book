@@ -211,8 +211,6 @@ func (b *docxBuilder) buildParagraph(sc *scanner, indent bool) {
 	p := b.doc.AddParagraph("")
 	p.GetCT().Property = b.paragraphProp()
 
-	// Denotes the start of the paragraph, used to ensure the paragraph
-	// is indented.
 	start := true
 
 	var buf bytes.Buffer
@@ -239,6 +237,9 @@ loop:
 				break loop
 			}
 		case *Text:
+			// There could be multiple Text tokens to a paragraph,
+			// therefore only indent if this is the first Text token
+			// and if indent is set to true.
 			if start && indent {
 				buf.WriteString("\t")
 				start = false
