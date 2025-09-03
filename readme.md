@@ -92,6 +92,10 @@ names as additional arguments,
 
     $ book pub -f pdf dracula.mom "CHAPTER ONE"
 
+Chapter numbers can also be given in lieu of chapter titles,
+
+    $ book pub -f pdf dracula.mom 1
+
 ## PDF
 
 The PDF format requires [groff][]. If using Linux, then this should already be
