@@ -64,6 +64,17 @@ func pubCmd(cmd *Command, args []string) error {
 		ms.Tokens = toks
 	}
 
+	// In the case of publishing a single chapter we want to remove the
+	// trailing COLLATE macro. With this in place it will add an additional
+	// blank page to the document, which we don't want.
+	last := ms.Tokens[len(ms.Tokens)-1]
+
+	if m, ok := last.(*Macro); ok {
+		if m.Name == "COLLATE" {
+			ms.Tokens = ms.Tokens[:len(ms.Tokens)-1]
+		}
+	}
+
 	name := filepath.Base(file)
 	name = name[:len(name)-4] + "." + format
 
