@@ -69,7 +69,7 @@ func pubCmd(cmd *Command, args []string) error {
 
 	switch format {
 	case "docx":
-		docx, err := newDocx(name, ms)
+		docx, err := newDocxBuilder(name, ms)
 
 		if err != nil {
 			return err

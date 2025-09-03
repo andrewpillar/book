@@ -42,7 +42,7 @@ type docxBuilder struct {
 	doc   *docx.RootDoc
 }
 
-func newDocx(name string, ms *Manuscript) (*docxBuilder, error) {
+func newDocxBuilder(name string, ms *Manuscript) (*docxBuilder, error) {
 	doc, err := godocx.NewDocument()
 
 	if err != nil {
