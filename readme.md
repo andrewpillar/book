@@ -82,7 +82,15 @@ format which should be used as an addition to the [documentation][] of mom.
 
 # Publishing
 
-Manuscripts can be published into both the PDF and DOCX formats.
+Manuscripts can be published into both the PDF and DOCX formats, via the `pub`
+command,
+
+    $ book pub -f pdf dracula.mom
+
+Individual chapters of a manuscript can be published via passing the chapter
+names as additional arguments,
+
+    $ book pub -f pdf dracula.mom "CHAPTER ONE"
 
 ## PDF
 
@@ -105,8 +113,9 @@ Under the hood this runs the following groff command,
 
 ## DOCX
 
-To publish in the DOCX format, simply specify it via the `-f` flag with the
-`pub` command,
+Pretty much every literary agent expects manuscripts to be submitted in the DOCX
+format. To publish in the DOCX format, simply specify it via the `-f` flag with
+the `pub` command,
 
     $ book pub -f docx dracula.mom
     dracula.docx
