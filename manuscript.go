@@ -333,21 +333,19 @@ func (ms *Manuscript) Chapters(names ...string) []*Chapter {
 				num++
 
 				// Determine if we actually want this chapter returned in the slice.
-				// For numbered chapters use num for the chapter title, otherwise
-				// use the argument from CHAPTER_TITLE.
 				if len(names) > 0 {
-					title := ""
+					title := strconv.Itoa(num)
 
-					if m.Name == "CHAPTER" {
-						title = strconv.Itoa(num)
-					}
-
-					if m.Name == "CHAPTER_TITLE" && len(m.Args) > 0 {
-						title = m.Args[0]
-					}
-
+					// First check to see the chapter number itself has been
+					// given. If not, fallback to the chapter title itself.
 					if _, ok := set[title]; !ok {
-						continue
+						if m.Name == "CHAPTER_TITLE" && len(m.Args) > 0 {
+							title = m.Args[0]
+						}
+
+						if _, ok := set[title]; !ok {
+							continue
+						}
 					}
 				}
 
