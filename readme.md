@@ -76,7 +76,7 @@ A chapter name can be given to get the word count for an individual chapter,
 This repository includes an [example manuscript][] to demonstrate the groff mom
 format which should be used as an addition to the [documentation][] of mom.
 
-[example manuscript]: /blob/main/testdata/dracula.mom
+[example manuscript]: /testdata/dracula.mom
 
 [documentation]: https://schaffter.ca/mom/momdoc/toc.html
 
