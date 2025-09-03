@@ -30,4 +30,4 @@ install: build
 
 clean:
 	go clean -testcache
-	rm -rf $(BIN)/ *.pdf
+	rm -rf $(BIN)/ *.docx *.pdf

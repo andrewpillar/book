@@ -15,7 +15,6 @@ var LsCmd = &Command{
 The -n flag will display chapter numbers.
 
 The -wc flag will print the word count of each chapter.`,
-	Run: lsCmd,
 }
 
 func lsCmd(cmd *Command, args []string) error {
@@ -35,34 +34,37 @@ func lsCmd(cmd *Command, args []string) error {
 		return ErrUsage
 	}
 
-	ms, err := LoadManuscript(args[0])
+	ms, err := ParseManuscript(args[0])
 
 	if err != nil {
 		return err
 	}
 
+	chapters := ms.Chapters()
 	pad := 0
 
-	for _, ch := range ms.Chapters {
-		if l := utf8.RuneCountInString(ch.Title); l > pad {
+	for _, ch := range chapters {
+		if l := utf8.RuneCountInString(ch.Title()); l > pad {
 			pad = l
 		}
 	}
 
-	for _, ch := range ms.Chapters {
+	for _, ch := range chapters {
 		if number {
 			fmt.Printf("%3d ", ch.Number)
 		}
 
-		fmt.Print(ch.Title)
+		title := ch.Title()
+		fmt.Print(title)
 
 		if wc {
-			if n := pad - utf8.RuneCountInString(ch.Title); n > 0 {
+			if n := pad - utf8.RuneCountInString(title); n > 0 {
 				fmt.Print(strings.Repeat(" ", n))
 			}
 			fmt.Printf(" %6s", formatNumber(ch.WordCount()))
 		}
 		fmt.Println()
 	}
+
 	return nil
 }

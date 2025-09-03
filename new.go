@@ -2,22 +2,28 @@ package main
 
 import (
 	"bytes"
+	_ "embed"
 	"errors"
 	"os"
 	"os/exec"
 	"regexp"
 	"strings"
+	"text/template"
+	"time"
 )
 
-var NewCmd = &Command{
-	Usage: "new <title>",
-	Short: "create a new manuscript",
-	Run:   newCmd,
-}
+//go:embed manuscript.tmpl
+var manuscriptTmpl []byte
 
 var (
 	reSlug = regexp.MustCompile("[^a-zA-Z0-9]")
 	reDupe = regexp.MustCompile("-{2,}")
+
+	NewCmd = &Command{
+		Usage: "new <title>",
+		Short: "create a new manuscript",
+		Run:   newCmd,
+	}
 )
 
 func slug(s string) string {
@@ -53,15 +59,15 @@ func newCmd(cmd *Command, args []string) error {
 		return errors.New("EDITOR not set")
 	}
 
-	name := slug(args[0])
-
-	tmpl, err := ManuscriptTemplate()
+	author, err := GitUserName()
 
 	if err != nil {
 		return err
 	}
 
-	author, err := GitUserName()
+	name := slug(args[0])
+
+	tmpl, err := template.New(name).Parse(string(manuscriptTmpl))
 
 	if err != nil {
 		return err
@@ -75,13 +81,19 @@ func newCmd(cmd *Command, args []string) error {
 
 	defer f.Close()
 
-	var ms Manuscript
+	var data struct {
+		Title      string
+		PrintStyle string
+		Author     string
+		Year       int
+	}
 
-	ms.PrintStyle = "TYPESET"
-	ms.Title = args[0]
-	ms.Author = author
+	data.Title = args[0]
+	data.PrintStyle = "TYPESET"
+	data.Author = author
+	data.Year = time.Now().Year()
 
-	if err := tmpl.Execute(f, &ms); err != nil {
+	if err := tmpl.Execute(f, data); err != nil {
 		return err
 	}
 

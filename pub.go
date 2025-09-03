@@ -1,21 +1,12 @@
 package main
 
 import (
-	_ "embed"
 	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
-	"text/template"
-	"time"
-
-	"github.com/gomutex/godocx"
-	"github.com/gomutex/godocx/wml/ctypes"
-	"github.com/gomutex/godocx/wml/stypes"
 )
 
 var PubCmd = &Command{
@@ -24,41 +15,6 @@ var PubCmd = &Command{
 	Long: `Publish the manuscript into the given format, either docx or pdf as specified via
 the -f flag. If pdf, then groff is used under the hood to produce the final pdf.`,
 	Run: pubCmd,
-}
-
-//go:embed manuscript.tmpl
-var manuscriptTmpl []byte
-
-func formatNumber(n int) string {
-	s := strconv.FormatInt(int64(n), 10)
-
-	for i := len(s); i > 3; {
-		i -= 3
-		s = s[:i] + "," + s[i:]
-	}
-	return s
-}
-
-func ManuscriptTemplate() (*template.Template, error) {
-	tmpl := template.New("manuscript.tmpl")
-	tmpl.Funcs(template.FuncMap{
-		"format_number": formatNumber,
-		"now":           time.Now,
-	})
-
-	return tmpl.Parse(string(manuscriptTmpl))
-}
-
-func docxParaProp() *ctypes.ParagraphProp {
-	line := 500
-	after := uint64(0)
-
-	prop := ctypes.DefaultParaProperty()
-	prop.Spacing = &ctypes.Spacing{
-		Line:  &line,
-		After: &after,
-	}
-	return prop
 }
 
 func pubCmd(cmd *Command, args []string) error {
@@ -79,114 +35,49 @@ func pubCmd(cmd *Command, args []string) error {
 	}
 
 	file := args[0]
+	args = args[1:]
 
-	var chapters []string
-
-	if len(args) > 1 {
-		chapters = args[1:]
-	}
-
-	ms, err := LoadManuscript(file)
+	ms, err := ParseManuscript(file)
 
 	if err != nil {
 		return err
 	}
 
-	if len(chapters) > 0 {
-		only := make(map[string]struct{})
+	// If chapters have been given, then make sure the manuscript only
+	// contains that chapters we want to publish.
+	if len(args) > 0 {
+		chapters := ms.Chapters(args...)
+		toks := make([]Token, 0, len(ms.Tokens))
 
-		for _, title := range chapters {
-			only[title] = struct{}{}
-		}
-
-		keep := make([]*Chapter, 0, len(ms.Chapters))
-
-		for _, ch := range ms.Chapters {
-			if _, ok := only[ch.Title]; ok {
-				keep = append(keep, ch)
+		for _, tok := range ms.Tokens {
+			if m, ok := tok.(*Macro); ok {
+				if m.Name == "CHAPTER" || m.Name == "CHAPTER_TITLE" {
+					break
+				}
 			}
+			toks = append(toks, tok)
 		}
-		ms.Chapters = keep
+
+		for _, ch := range chapters {
+			toks = append(toks, ch.Tokens()...)
+		}
+		ms.Tokens = toks
 	}
 
 	name := filepath.Base(file)
-	name = name[:len(name)-4]
+	name = name[:len(name)-4] + "." + format
 
 	switch format {
 	case "docx":
-		doc, err := godocx.NewDocument()
+		docx, err := newDocx(name, ms)
 
 		if err != nil {
 			return err
 		}
 
-		margin := 1300
-
-		doc.Document.Body.SectPr.PageMargin.Left = &margin
-		doc.Document.Body.SectPr.PageMargin.Right = &margin
-
-		doc.Document.Body.SectPr.PageNum = &ctypes.PageNumbering{
-			Format: stypes.NumFmtDecimal,
-		}
-
-		font := "Times New Roman"
-		paraSize := uint64(12)
-		titleSize := uint64(18)
-
-		for i := 0; i < 8; i++ {
-			doc.AddParagraph("").AddText("").Size(titleSize)
-		}
-
-		title, err := doc.AddHeading("", 0)
-
-		if err != nil {
+		if err := docx.build(); err != nil {
 			return err
 		}
-
-		title.Justification(stypes.JustificationCenter)
-		title.AddText(ms.Title).Bold(true).Italic(true).Font(font).Color("#000000").Size(titleSize)
-
-		for _, s := range []string{"by", ms.Author} {
-			p := doc.AddParagraph("")
-			p.Justification(stypes.JustificationCenter)
-			p.AddText(s).Italic(true).Font(font).Size(paraSize)
-		}
-
-		doc.AddPageBreak()
-
-		for _, ch := range ms.Chapters {
-			title, err := doc.AddHeading("", 1)
-
-			if err != nil {
-				return err
-			}
-
-			title.GetCT().Property = docxParaProp()
-			title.Justification(stypes.JustificationCenter)
-			title.AddText(ch.Title).Bold(true).Italic(true).Font(font).Color("#000000").Size(titleSize)
-
-			for _, txt := range ch.Epigraph() {
-				p := doc.AddParagraph("")
-				p.Justification(stypes.JustificationCenter)
-				p.AddText(txt).Font(font).Size(paraSize)
-			}
-
-			for i, txt := range ch.Paragraphs() {
-				if i != 0 {
-					txt = "\t" + txt
-				}
-
-				p := doc.AddParagraph("")
-				p.GetCT().Property = docxParaProp()
-				p.AddText(txt).Font(font).Size(paraSize)
-			}
-			doc.AddPageBreak()
-		}
-
-		if err := doc.SaveTo(name + ".docx"); err != nil {
-			return err
-		}
-		fmt.Println(name + ".docx")
 	case "pdf":
 		tmp, err := os.CreateTemp("", name)
 
@@ -197,11 +88,11 @@ func pubCmd(cmd *Command, args []string) error {
 		defer os.Remove(tmp.Name())
 		defer tmp.Close()
 
-		if _, err := io.Copy(tmp, ms.Buffer); err != nil {
+		if err := ms.WriteTo(tmp); err != nil {
 			return err
 		}
 
-		f, err := os.Create(name + ".pdf")
+		f, err := os.Create(name)
 
 		if err != nil {
 			return err
@@ -217,9 +108,10 @@ func pubCmd(cmd *Command, args []string) error {
 		if err := c.Run(); err != nil {
 			return err
 		}
-		fmt.Println(f.Name())
 	default:
 		return errors.New("unrecognized publish format")
 	}
+
+	fmt.Println(name)
 	return nil
 }

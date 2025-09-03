@@ -1,27 +1,21 @@
 package main
 
 import (
-	"bytes"
+	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 )
 
 type Buffer struct {
-	buf  []byte
-	tmp  []rune
-	pos  int
-	eof  int
-	line int
-	col  int
-}
-
-func BufferString(s string) *Buffer {
-	return &Buffer{
-		buf: []byte(s),
-		eof: len(s),
-	}
+	Buf  []byte
+	Lit  []rune
+	Pos  int
+	EOF  int
+	Line int
+	Col  int
 }
 
 func BufferFile(name string) (*Buffer, error) {
@@ -32,69 +26,73 @@ func BufferFile(name string) (*Buffer, error) {
 	}
 
 	return &Buffer{
-		buf: b,
-		eof: len(b),
+		Buf:  b,
+		Pos:  0,
+		EOF:  len(b),
+		Line: 1,
 	}, nil
 }
 
-func (b *Buffer) Seek(i int) {
-	b.pos = i
-
-	if b.pos < 0 {
-		b.pos = 0
+func BufferString(s string) *Buffer {
+	return &Buffer{
+		Buf: []byte(s),
+		EOF: len(s),
 	}
-
-	if b.pos > b.eof {
-		b.pos = b.eof
-	}
-}
-
-func (b *Buffer) Read(p []byte) (int, error) {
-	if b.pos >= b.eof {
-		return 0, io.EOF
-	}
-
-	n := copy(p, b.buf[b.pos:])
-	b.pos += n
-	return n, nil
 }
 
 func (b *Buffer) Get() rune {
-	if b.pos >= b.eof {
+	if b.Pos >= b.EOF {
 		return -1
 	}
 
-	r := rune(b.buf[b.pos])
+	r := rune(b.Buf[b.Pos])
 	w := 1
 
 	if r >= utf8.RuneSelf {
-		r, w = utf8.DecodeRune(b.buf[b.pos:])
+		r, w = utf8.DecodeRune(b.Buf[b.Pos:])
 	}
 
-	b.pos += w
-	b.col += w
+	b.Pos += w
+	b.Col += w
 
 	if r == '\n' {
-		b.line++
-		b.col = 0
+		b.Line++
+		b.Col = 0
 	}
 	return r
 }
 
-func (b *Buffer) Line() (string, bool) {
+func (b *Buffer) GetLine() (string, bool) {
 	r := b.Get()
 
 	if r == -1 {
 		return "", false
 	}
 
-	b.tmp = b.tmp[0:0]
+	b.Lit = b.Lit[0:0]
 
 	for r != '\n' {
-		b.tmp = append(b.tmp, r)
+		b.Lit = append(b.Lit, r)
 		r = b.Get()
 	}
-	return string(b.tmp), true
+	return string(b.Lit), true
+}
+
+func (b *Buffer) Seek(i int) {
+	b.Pos = i
+
+	if b.Pos < 0 {
+		b.Pos = 0
+	}
+	if b.Pos >= b.EOF {
+		b.Pos = b.EOF
+	}
+}
+
+type Token interface {
+	aToken()
+
+	WriteTo(w io.Writer) error
 }
 
 type Macro struct {
@@ -102,349 +100,290 @@ type Macro struct {
 	Args []string
 }
 
-func ParseMacro(s string) *Macro {
-	var m Macro
+func (m *Macro) aToken() {}
 
-	buf := BufferString(s)
-
-	tmp := make([]rune, 0, len(s))
-
-	quoted := false
-	r := buf.Get()
-
-	for r != -1 {
-		if r == '.' && m.Name == "" {
-			r = buf.Get()
-
-			for r != ' ' && r != '\t' && r != -1 {
-				tmp = append(tmp, r)
-				r = buf.Get()
-			}
-
-			m.Name = string(tmp)
-			tmp = tmp[0:0]
-
-			r = buf.Get()
-
-			for r == ' ' || r == '\t' {
-				r = buf.Get()
-			}
-			continue
-		}
-
-		if r == '"' {
-			quoted = !quoted
-			r = buf.Get()
-			continue
-		}
-
-		if r == ' ' && !quoted {
-			m.Args = append(m.Args, string(tmp))
-			tmp = tmp[0:0]
-
-			r = buf.Get()
-			continue
-		}
-
-		tmp = append(tmp, r)
-		r = buf.Get()
+func (m *Macro) WriteTo(w io.Writer) error {
+	if _, err := io.WriteString(w, "."+m.Name); err != nil {
+		return err
 	}
 
-	if len(tmp) > 0 {
-		m.Args = append(m.Args, string(tmp))
+	if _, err := io.WriteString(w, " "); err != nil {
+		return err
 	}
-	return &m
-}
 
-type Chapter struct {
-	Buffer   *Buffer
-	Number   int
-	Title    string
-	Subtitle string
-	Start    int
-	End      int
-}
-
-func (c *Chapter) Content() string {
-	buf := make([]byte, c.End-c.Start)
-
-	c.Buffer.Seek(c.Start)
-	c.Buffer.Read(buf)
-
-	return string(buf)
-}
-
-func (c *Chapter) Text() string {
-	var buf bytes.Buffer
-
-	c.Buffer.Seek(c.Start)
-
-	for {
-		line, ok := c.Buffer.Line()
-
-		if !ok || line == ".COLLATE" {
-			break
-		}
-
-		if line == "" {
-			continue
-		}
-
-		if line[0] == '.' {
-			m := ParseMacro(line)
-
-			// Special case, we want to include the character in the output too.
-			if m.Name == "DROPCAP" {
-				buf.WriteString(m.Args[0])
-			}
-
-			if m.Name == "PP" {
-				buf.WriteString("\n")
-			}
-			continue
-		}
-
-		lbuf := BufferString(line)
-		tmp := make([]byte, 0, len(line))
-
-		r := lbuf.Get()
-
-		// Strip the line of any inline formatting macros.
-		for r != -1 {
-			if r == '\\' {
-				r = lbuf.Get()
-
-				if r == '*' || r == '[' {
-					for r != ']' {
-						r = lbuf.Get()
-					}
-					r = lbuf.Get()
-				}
-			}
-
-			tmp = utf8.AppendRune(tmp, r)
-			r = lbuf.Get()
-		}
-
-		tmp = append(tmp, '\n')
-		buf.Write(tmp)
-		tmp = tmp[0:0]
-	}
-	return buf.String()
-}
-
-func (c *Chapter) Epigraph() []string {
-	lines := make([]string, 0)
-
-	c.Buffer.Seek(c.Start)
-
-	for {
-		line, ok := c.Buffer.Line()
-
-		if !ok || line == ".COLLATE" {
-			return nil
-		}
-
-		if line == ".EPIGRAPH" {
-			for {
-				line, ok = c.Buffer.Line()
-
-				if !ok || line == ".EPIGRAPH OFF" {
-					break
-				}
-				lines = append(lines, line)
-			}
-			break
+	for _, arg := range m.Args {
+		if _, err := fmt.Fprintf(w, "%q ", arg); err != nil {
+			return err
 		}
 	}
-	return lines
-}
 
-func (c *Chapter) Paragraphs() []string {
-	paragraphs := make([]string, 0)
-
-	c.Buffer.Seek(c.Start)
-
-	var buf bytes.Buffer
-
-	tmp := make([]byte, 0)
-
-	for {
-		line, ok := c.Buffer.Line()
-
-		if !ok || line == ".COLLATE" {
-			if buf.Len() > 0 {
-				unfolded := strings.Replace(buf.String(), "\n", " ", -1)
-
-				paragraphs = append(paragraphs, strings.TrimSuffix(unfolded, " "))
-				buf.Reset()
-			}
-			break
-		}
-
-		if line == "" {
-			continue
-		}
-
-		if line[0] == '.' {
-			m := ParseMacro(line)
-
-			if m.Name == "DROPCAP" {
-				buf.WriteString(m.Args[0])
-			}
-
-			if m.Name == "EPIGRAPH" {
-				line, ok = c.Buffer.Line()
-
-				if !ok || line == ".COLLATE" {
-					break
-				}
-
-				for {
-					line, ok = c.Buffer.Line()
-
-					if !ok {
-						break
-					}
-
-					if line != "" {
-						if line == ".EPIGRAPH OFF" {
-							break
-						}
-					}
-				}
-			}
-
-			if m.Name == "PP" {
-				if buf.Len() > 0 {
-					unfolded := strings.Replace(buf.String(), "\n", " ", -1)
-
-					paragraphs = append(paragraphs, strings.TrimSuffix(unfolded, " "))
-					buf.Reset()
-				}
-			}
-			continue
-		}
-
-		lbuf := BufferString(line)
-
-		r := lbuf.Get()
-
-		// Strip the line of any inline formatting macros.
-		for r != -1 {
-			if r == '\\' {
-				r = lbuf.Get()
-
-				if r == '*' || r == '[' {
-					for r != ']' {
-						r = lbuf.Get()
-					}
-					r = lbuf.Get()
-				}
-			}
-
-			tmp = utf8.AppendRune(tmp, r)
-			r = lbuf.Get()
-		}
-
-		tmp = append(tmp, '\n')
-		buf.Write(tmp)
-		tmp = tmp[0:0]
+	if _, err := fmt.Fprintln(w); err != nil {
+		return err
 	}
-	return paragraphs
+	return nil
 }
 
-func (c *Chapter) WordCount() int {
-	lines := strings.Split(c.Text(), "\n")
-	wc := 0
+type Text struct {
+	Value string
+}
 
-	for _, line := range lines {
-		if line == "" {
-			continue
-		}
-		wc += len(strings.Split(strings.TrimSpace(line), " "))
+func (t *Text) aToken() {}
+
+func (t *Text) WriteTo(w io.Writer) error {
+	if _, err := io.WriteString(w, t.Value); err != nil {
+		return err
 	}
-	return wc
+
+	if _, err := fmt.Fprintln(w); err != nil {
+		return err
+	}
+	return nil
 }
+
+type Inline struct {
+	Escape string
+}
+
+func (i *Inline) aToken() {}
+
+func (i *Inline) WriteTo(w io.Writer) error { return nil }
 
 type Manuscript struct {
-	Buffer     *Buffer
-	PrintStyle string
-	Title      string
-	Subtitle   string
-	Author     string
-	Chapters   []*Chapter
+	Tokens []Token
 }
 
-func LoadManuscript(name string) (*Manuscript, error) {
+func ParseManuscript(name string) (*Manuscript, error) {
 	buf, err := BufferFile(name)
 
 	if err != nil {
 		return nil, err
 	}
 
-	ms := Manuscript{
-		Buffer: buf,
-	}
+	toks := make([]Token, 0)
+	tmp := make([]rune, 0)
 
-	line, ok := ms.Buffer.Line()
+	for {
+		line, ok := buf.GetLine()
 
-	// Number of the chapter.
-	num := 0
+		if !ok {
+			break
+		}
 
-	for ok {
 		if line != "" {
 			if line[0] == '.' {
-				m := ParseMacro(line)
+				var m Macro
 
-				switch m.Name {
-				case "DOCTITLE":
-					ms.Title = m.Args[0]
-				case "PRINTSTYLE":
-					ms.PrintStyle = m.Args[0]
-				case "SUBTITLE":
-					ms.Subtitle = m.Args[0]
-				case "AUTHOR":
-					ms.Author = m.Args[0]
-				case "CHAPTER_TITLE":
-					num++
+				buf := BufferString(line)
 
-					start := ms.Buffer.pos
+				quoted := false
+				r := buf.Get()
 
-					line, ok = ms.Buffer.Line()
+				for r != -1 {
+					if r == '.' && m.Name == "" {
+						r = buf.Get()
 
-					for {
-						if !ok || line == ".COLLATE" {
-							break
+						for r != ' ' && r != '\t' && r != -1 {
+							tmp = append(tmp, r)
+							r = buf.Get()
 						}
-						line, ok = ms.Buffer.Line()
+
+						m.Name = string(tmp)
+						tmp = tmp[0:0]
+
+						r = buf.Get()
+
+						for r == ' ' || r == '\t' {
+							r = buf.Get()
+						}
+						continue
 					}
 
-					end := ms.Buffer.pos
+					if r == '"' {
+						quoted = !quoted
+						r = buf.Get()
+						continue
+					}
 
-					ms.Chapters = append(ms.Chapters, &Chapter{
-						Buffer: ms.Buffer,
-						Number: num,
-						Title:  m.Args[0],
-						Start:  start,
-						End:    end,
-					})
+					if r == ' ' && !quoted {
+						m.Args = append(m.Args, string(tmp))
+						tmp = tmp[0:0]
+
+						r = buf.Get()
+						continue
+					}
+
+					tmp = append(tmp, r)
+					r = buf.Get()
+				}
+
+				if len(tmp) > 0 {
+					m.Args = append(m.Args, string(tmp))
+					tmp = tmp[0:0]
+				}
+
+				toks = append(toks, &m)
+				continue
+			}
+		}
+
+		toks = append(toks, &Text{
+			Value: line,
+		})
+	}
+
+	return &Manuscript{
+		Tokens: toks,
+	}, nil
+}
+
+func (ms *Manuscript) Macro(name string) *Macro {
+	for _, tok := range ms.Tokens {
+		if m, ok := tok.(*Macro); ok {
+			if m.Name == name {
+				return m
+			}
+		}
+	}
+	return nil
+}
+
+func (ms *Manuscript) Get(macro string) string {
+	if m := ms.Macro(macro); m != nil {
+		if len(m.Args) > 0 {
+			return m.Args[0]
+		}
+	}
+	return ""
+}
+
+func (ms *Manuscript) DocTitle() string {
+	return ms.Get("DOCTITLE")
+}
+
+func (ms *Manuscript) Author() string {
+	return ms.Get("AUTHOR")
+}
+
+func (ms *Manuscript) Copyright() string {
+	return ms.Get("COPYRIGHT")
+}
+
+func (ms *Manuscript) PrintStyle() string {
+	return ms.Get("PRINTSTYLE")
+}
+
+type Chapter struct {
+	*Manuscript
+
+	Number int
+	Start  int
+	End    int
+}
+
+func (ch *Chapter) Tokens() []Token {
+	return ch.Manuscript.Tokens[ch.Start:ch.End]
+}
+
+func (ch *Chapter) Title() string {
+	title := ""
+
+	for _, tok := range ch.Tokens() {
+		if m, ok := tok.(*Macro); ok {
+			if m.Name == "CHAPTER_TITLE" {
+				if len(m.Args) > 0 {
+					title = m.Args[0]
 				}
 			}
 		}
-		line, ok = ms.Buffer.Line()
 	}
 
-	ms.Buffer.Seek(0)
-
-	return &ms, nil
+	if title == "" {
+		title = strconv.Itoa(ch.Number)
+	}
+	return title
 }
 
-func (m *Manuscript) WordCount() int {
+func (ch *Chapter) WordCount() int {
 	wc := 0
 
-	for _, ch := range m.Chapters {
-		wc += ch.WordCount()
+	for _, tok := range ch.Tokens() {
+		if txt, ok := tok.(*Text); ok {
+			if txt.Value == "" || txt.Value == " " {
+				continue
+			}
+			wc += len(strings.Split(strings.TrimSpace(txt.Value), " "))
+		}
 	}
 	return wc
+}
+
+func (ms *Manuscript) Chapters(names ...string) []*Chapter {
+	set := make(map[string]struct{})
+
+	for _, name := range names {
+		set[name] = struct{}{}
+	}
+
+	chapters := make([]*Chapter, 0)
+	num := 0
+
+	for i, tok := range ms.Tokens {
+		if m, ok := tok.(*Macro); ok {
+			if m.Name == "CHAPTER" || m.Name == "CHAPTER_TITLE" {
+				num++
+
+				// Determine if we actually want this chapter returned in the slice.
+				// For numbered chapters use num for the chapter title, otherwise
+				// use the argument from CHAPTER_TITLE.
+				if len(names) > 0 {
+					title := ""
+
+					if m.Name == "CHAPTER" {
+						title = strconv.Itoa(num)
+					}
+
+					if m.Name == "CHAPTER_TITLE" && len(m.Args) > 0 {
+						title = m.Args[0]
+					}
+
+					if _, ok := set[title]; !ok {
+						continue
+					}
+				}
+
+				ch := Chapter{
+					Manuscript: ms,
+					Number:     num,
+					Start:      i,
+				}
+
+				for j, tok := range ms.Tokens[ch.Start:] {
+					if m, ok := tok.(*Macro); ok {
+						if m.Name == "COLLATE" {
+							ch.End = i + j + 1
+							break
+						}
+					}
+
+					// If the end has not been set because there is no COLLATE
+					// then assume this is the last chapter and EOF, so set the
+					// end to the end of the token slice.
+					if j == len(ms.Tokens[ch.Start:])-1 {
+						ch.End = i + j + 1
+					}
+				}
+				chapters = append(chapters, &ch)
+			}
+		}
+	}
+	return chapters
+}
+
+func (ms *Manuscript) WriteTo(w io.Writer) error {
+	for _, tok := range ms.Tokens {
+		if err := tok.WriteTo(w); err != nil {
+			return err
+		}
+	}
+	return nil
 }
