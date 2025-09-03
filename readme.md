@@ -99,7 +99,7 @@ command,
 
 This will produce the name of the published PDF file as the output upon success.
 
-Under the this runs the following groff command,
+Under the hood this runs the following groff command,
 
     $ groff -k -mom -T pdf <file>.mom > <file>.pdf
 
