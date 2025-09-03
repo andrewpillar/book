@@ -21,6 +21,18 @@ func Test_ManuscriptDocTitle(t *testing.T) {
 	}
 }
 
+func Test_ManuscriptAuthor(t *testing.T) {
+	ms, err := ParseManuscript(manuscriptFile())
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if title := ms.Author(); title != "Bram Stoker" {
+		t.Fatalf("unexpected AUTHOR, expected=%q, got=%q\n", "Bram Stoker", title)
+	}
+}
+
 func Test_ManuscriptChapters(t *testing.T) {
 	ms, err := ParseManuscript(manuscriptFile())
 
