@@ -2,7 +2,7 @@
 
 * [Installation](#installation)
 * [Usage](#usage)
-* [Publishing](#publishin)
+* [Publishing](#publishing)
 
 book is a simple tool for working with [groff mom][] manuscript files. It
 provides word counts, either for the entire manuscript, or for each chapter,
