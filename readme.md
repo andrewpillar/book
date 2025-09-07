@@ -86,15 +86,25 @@ Manuscripts can be published into both the PDF and DOCX formats, via the `pub`
 command,
 
     $ book pub -f pdf dracula.mom
+    dracula.pdf
 
 Individual chapters of a manuscript can be published via passing the chapter
 names as additional arguments,
 
     $ book pub -f pdf dracula.mom "CHAPTER ONE"
+    dracula-chapter-1.pdf
 
 Chapter numbers can also be given in lieu of chapter titles,
 
     $ book pub -f pdf dracula.mom 1
+    dracula-chapter-1.pdf
+
+The `pub` command will print out the name of the published manuscript as the
+only output upon success. If chapters were specified then the name will be
+formatted to reflect that. For example,
+
+    $ book pub -f pdf dracula.mom 1 2
+    dracula-chapters-1-to-2.pdf
 
 ## PDF
 
@@ -108,8 +118,6 @@ command,
 
     $ book pub -f pdf dracula.mom
     dracula.pdf
-
-This will produce the name of the published PDF file as the output upon success.
 
 Under the hood this runs the following groff command,
 
