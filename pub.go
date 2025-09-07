@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 )
 
 var PubCmd = &Command{
@@ -43,6 +44,9 @@ func pubCmd(cmd *Command, args []string) error {
 		return err
 	}
 
+	name := filepath.Base(file)
+	name = name[:len(name)-4]
+
 	// If chapters have been given, then make sure the manuscript only
 	// contains that chapters we want to publish.
 	if len(args) > 0 {
@@ -61,8 +65,19 @@ func pubCmd(cmd *Command, args []string) error {
 		for _, ch := range chapters {
 			toks = append(toks, ch.Tokens()...)
 		}
+
+		if len(chapters) > 1 {
+			name += "-chapters-"
+			name += strconv.Itoa(chapters[0].Number) + "-to-"
+			name += strconv.Itoa(chapters[len(chapters)-1].Number)
+		} else {
+			name += "-chapter-" + strconv.Itoa(chapters[0].Number)
+		}
+
 		ms.Tokens = toks
 	}
+
+	name += "." + format
 
 	// In the case of publishing a single chapter we want to remove the
 	// trailing COLLATE macro. With this in place it will add an additional
@@ -74,9 +89,6 @@ func pubCmd(cmd *Command, args []string) error {
 			ms.Tokens = ms.Tokens[:len(ms.Tokens)-1]
 		}
 	}
-
-	name := filepath.Base(file)
-	name = name[:len(name)-4] + "." + format
 
 	switch format {
 	case "docx":
