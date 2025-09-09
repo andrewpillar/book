@@ -16,6 +16,7 @@ Usage:
 `,
 	}
 
+	cmds.Add("cat", CatCmd)
 	cmds.Add("clean", CleanCmd)
 	cmds.Add("ls", LsCmd)
 	cmds.Add("new", NewCmd)

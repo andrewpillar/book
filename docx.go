@@ -15,6 +15,58 @@ type scanner struct {
 	toks []Token
 }
 
+func tokenize(txt string) []Token {
+	buf := BufferString(txt)
+	tmp := make([]rune, 0, len(txt))
+
+	toks := make([]Token, 0)
+
+	r := buf.Get()
+
+	for r != -1 {
+		if r == '\\' {
+			toks = append(toks, &Text{
+				Value: string(tmp),
+			})
+
+			tmp = tmp[0:0]
+
+			r = buf.Get()
+
+			if r == '*' || r == '[' {
+				r = buf.Get()
+
+				if r == '[' {
+					r = buf.Get()
+				}
+
+				for r != ']' {
+					tmp = append(tmp, r)
+					r = buf.Get()
+				}
+
+				toks = append(toks, &Inline{
+					Escape: string(tmp),
+				})
+
+				tmp = tmp[0:0]
+				r = buf.Get()
+				continue
+			}
+		}
+
+		tmp = append(tmp, r)
+		r = buf.Get()
+	}
+
+	if len(tmp) > 0 {
+		toks = append(toks, &Text{
+			Value: string(tmp),
+		})
+	}
+	return toks
+}
+
 func (sc *scanner) back() {
 	sc.pos--
 
@@ -70,58 +122,6 @@ func (b *docxBuilder) paragraphProp() *ctypes.ParagraphProp {
 	return prop
 }
 
-func (b *docxBuilder) tokenize(txt string) []Token {
-	buf := BufferString(txt)
-	tmp := make([]rune, 0, len(txt))
-
-	toks := make([]Token, 0)
-
-	r := buf.Get()
-
-	for r != -1 {
-		if r == '\\' {
-			toks = append(toks, &Text{
-				Value: string(tmp),
-			})
-
-			tmp = tmp[0:0]
-
-			r = buf.Get()
-
-			if r == '*' || r == '[' {
-				r = buf.Get()
-
-				if r == '[' {
-					r = buf.Get()
-				}
-
-				for r != ']' {
-					tmp = append(tmp, r)
-					r = buf.Get()
-				}
-
-				toks = append(toks, &Inline{
-					Escape: string(tmp),
-				})
-
-				tmp = tmp[0:0]
-				r = buf.Get()
-				continue
-			}
-		}
-
-		tmp = append(tmp, r)
-		r = buf.Get()
-	}
-
-	if len(tmp) > 0 {
-		toks = append(toks, &Text{
-			Value: string(tmp),
-		})
-	}
-	return toks
-}
-
 func (b *docxBuilder) defaultRun(r *docx.Run, size uint64) *docx.Run {
 	r.Font(b.font)
 	r.Color(b.color)
@@ -155,7 +155,7 @@ loop:
 
 func (b *docxBuilder) buildText(p *docx.Paragraph, txt string, size uint64) {
 	sc := scanner{
-		toks: b.tokenize(txt),
+		toks: tokenize(txt),
 	}
 
 	for {
