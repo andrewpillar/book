@@ -89,14 +89,22 @@ func (b *Buffer) Seek(i int) {
 	}
 }
 
+// Token represents the tokens parsed from the manuscript file.
 type Token interface {
 	aToken()
 
+	// WriteTo writes the token as plain text to the given [io.Writer].
+	// This should write it as the original plain text it was initially
+	// parsed from.
 	WriteTo(w io.Writer) error
 }
 
+// Macro represents a macro that has been parsed from the manuscript file.
 type Macro struct {
+	// Name is the macro name itself, either PP, or CHAPTER, etc.
 	Name string
+
+	// Args are the arguments given to the macro, if any.
 	Args []string
 }
 
@@ -123,6 +131,7 @@ func (m *Macro) WriteTo(w io.Writer) error {
 	return nil
 }
 
+// Text represents any line of text from the manuscript that is not a macro.
 type Text struct {
 	Value string
 }
@@ -140,6 +149,9 @@ func (t *Text) WriteTo(w io.Writer) error {
 	return nil
 }
 
+// Inline represents an inline escape macro. This will not appear in the
+// [Manuscript.Tokens] slice and is only used when generating the DOCX file of
+// the manuscript when publishing.
 type Inline struct {
 	Escape string
 }
@@ -148,10 +160,15 @@ func (i *Inline) aToken() {}
 
 func (i *Inline) WriteTo(w io.Writer) error { return nil }
 
+// Manuscript represents the parsed groff mom file. The file contents is parsed
+// into a [Token] slice, which will either be of type [Macro] or [Text].
 type Manuscript struct {
 	Tokens []Token
 }
 
+// ParseManuscript parses a groff mom manuscript from the given file. The file
+// is parsed line by line which is used to determine what is being parsed,
+// whether it be a macro, or some plain text.
 func ParseManuscript(name string) (*Manuscript, error) {
 	buf, err := BufferFile(name)
 
@@ -236,6 +253,9 @@ func ParseManuscript(name string) (*Manuscript, error) {
 	}, nil
 }
 
+// Macro returns the first macro by the given name. This should be used for
+// macros that will only appear once in a manuscript, such as DOCTITLE or
+// AUTHOR.
 func (ms *Manuscript) Macro(name string) *Macro {
 	for _, tok := range ms.Tokens {
 		if m, ok := tok.(*Macro); ok {
@@ -247,6 +267,9 @@ func (ms *Manuscript) Macro(name string) *Macro {
 	return nil
 }
 
+// Get returns the first argument of the first macro by the given name. This
+// should be used for macros that will only appear once in a manuscript, such as
+// DOCTITLE or AUTHOR.
 func (ms *Manuscript) Get(macro string) string {
 	if m := ms.Macro(macro); m != nil {
 		if len(m.Args) > 0 {
@@ -256,22 +279,36 @@ func (ms *Manuscript) Get(macro string) string {
 	return ""
 }
 
+// DocTitle returns the title from DOCTITLE.
 func (ms *Manuscript) DocTitle() string {
 	return ms.Get("DOCTITLE")
 }
 
+// Author returns the author from AUTHOR.
 func (ms *Manuscript) Author() string {
 	return ms.Get("AUTHOR")
 }
 
+// Copyright returns the copyright from COPYRIGHT.
 func (ms *Manuscript) Copyright() string {
 	return ms.Get("COPYRIGHT")
 }
 
+// PrintStyle returns the print style from PRINTSTYLE.
 func (ms *Manuscript) PrintStyle() string {
 	return ms.Get("PRINTSTYLE")
 }
 
+// Chapter represents a single chapter within a manuscript.
+//
+// The Count of the chapter is the numeric count of the chapter itself. That
+// is, whether it is the first, or second, etc. chapter in the manuscript. We
+// call this count as opposed to number because the chapter number is something
+// that can be specified via CHAPTER, which can be a number, a numeral, or a
+// word.
+//
+// Start and End mark the positions within the [Manuscript.Tokens] slice as to
+// where the chapter's contents is.
 type Chapter struct {
 	*Manuscript
 
@@ -280,10 +317,13 @@ type Chapter struct {
 	End   int
 }
 
+// Tokens returns the slice of tokens that make up the contents of the chapter
+// within the manuscript.
 func (ch *Chapter) Tokens() []Token {
 	return ch.Manuscript.Tokens[ch.Start:ch.End]
 }
 
+// Number returns the number of the chapter as specified via CHAPTER.
 func (ch *Chapter) Number() string {
 	number := ""
 
@@ -299,6 +339,7 @@ func (ch *Chapter) Number() string {
 	return number
 }
 
+// Title returns the title of the chapter as specified via CHAPTER_TITLE.
 func (ch *Chapter) Title() string {
 	title := ""
 
@@ -314,6 +355,7 @@ func (ch *Chapter) Title() string {
 	return title
 }
 
+// WordCount returns the word count of all the text content within the chapter.
 func (ch *Chapter) WordCount() int {
 	wc := 0
 
@@ -328,6 +370,10 @@ func (ch *Chapter) WordCount() int {
 	return wc
 }
 
+// Chapters returns a slice of the chapters within the manuscript. The chapters
+// returned can be limited via names, which can either include the chapter
+// titles or the chapter counts themselves. For example, passing "1", and "2"
+// would return a slice of the first two chapters.
 func (ms *Manuscript) Chapters(names ...string) []*Chapter {
 	set := make(map[string]struct{})
 
@@ -361,6 +407,10 @@ func (ms *Manuscript) Chapters(names ...string) []*Chapter {
 				ch.Start = sc.pos
 
 				tok = sc.next()
+
+				// Parse the rest of the chapter, which would include the
+				// CHAPTER_TITLE macro if also specified. We don't want to
+				// mistakenly count a chapter twice.
 				goto parseChapter
 			}
 
@@ -389,6 +439,8 @@ func (ms *Manuscript) Chapters(names ...string) []*Chapter {
 				tok = sc.next()
 			}
 
+			// Filter out the chapters that have been specified, if any. First we check
+			// for chapter counts, then fallback to checking chapter titles.
 			if len(names) > 0 {
 				scount := strconv.Itoa(count)
 
@@ -406,6 +458,9 @@ func (ms *Manuscript) Chapters(names ...string) []*Chapter {
 	return chapters
 }
 
+// WriteTo writes the contents of the entire manuscript to the given writer.
+// This will produce a 1-to-1 of what is on disk from the original groff mom
+// manuscript file.
 func (ms *Manuscript) WriteTo(w io.Writer) error {
 	for _, tok := range ms.Tokens {
 		if err := tok.WriteTo(w); err != nil {
