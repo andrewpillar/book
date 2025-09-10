@@ -10,13 +10,27 @@ import (
 	"github.com/gomutex/godocx/wml/stypes"
 )
 
+// scanner provides a simple interface to scan over a slice of tokens that can
+// be used to backtrack too. It's just a nicer alternative to use in lieu of a
+// for range loop.
 type scanner struct {
 	pos  int
 	toks []Token
 }
 
+// tokenize splits up the given string into a slice of tokens. The tokens in the
+// slice will either be of type [Text] or [Inline]. This is used to ensure that
+// inline escape macros for can be used to format the text appropriately for the
+// DOCX format, such as italics.
+//
+// This doesn't do validation and assumes that input text is "correct". So if an
+// inline escape macro is closed off properly, the manuscript will have broken
+// formatting. This is consistent with how groff works anyway.
 func tokenize(txt string) []Token {
 	buf := BufferString(txt)
+
+	// tmp is used to store the part of the string we have scanned in so
+	// far.
 	tmp := make([]rune, 0, len(txt))
 
 	toks := make([]Token, 0)
@@ -25,6 +39,8 @@ func tokenize(txt string) []Token {
 
 	for r != -1 {
 		if r == '\\' {
+			// Found the start of an inline macro, so tokenize what we have in the tmp
+			// buffer before we parse the inline macro.
 			toks = append(toks, &Text{
 				Value: string(tmp),
 			})
@@ -33,6 +49,8 @@ func tokenize(txt string) []Token {
 
 			r = buf.Get()
 
+			// We're at the end of the inline escape macro, so parse the name of macro
+			// we have.
 			if r == '*' || r == '[' {
 				r = buf.Get()
 
@@ -45,6 +63,7 @@ func tokenize(txt string) []Token {
 					r = buf.Get()
 				}
 
+				// Tokenize.
 				toks = append(toks, &Inline{
 					Escape: string(tmp),
 				})
@@ -60,6 +79,7 @@ func tokenize(txt string) []Token {
 	}
 
 	if len(tmp) > 0 {
+		// Tokenize whatever text is remaining in the tmp buffer.
 		toks = append(toks, &Text{
 			Value: string(tmp),
 		})
@@ -67,6 +87,7 @@ func tokenize(txt string) []Token {
 	return toks
 }
 
+// back sets the scanner position back by one, it cannot go below 0.
 func (sc *scanner) back() {
 	sc.pos--
 
@@ -75,6 +96,8 @@ func (sc *scanner) back() {
 	}
 }
 
+// next advances the scanner to the next token in the slice, this returns nil
+// when the scanner position exceeds the length of the slice.
 func (sc *scanner) next() Token {
 	if sc.pos >= len(sc.toks) {
 		return nil
@@ -94,6 +117,9 @@ type docxBuilder struct {
 	doc   *docx.RootDoc
 }
 
+// newDocxBuilder returns a docxBuilder for building the given [Manuscript]
+// into a DOCX file of the given name. The font and color for the document will
+// be Times New Roman and #000000 respectively.
 func newDocxBuilder(name string, ms *Manuscript) (*docxBuilder, error) {
 	doc, err := godocx.NewDocument()
 
@@ -110,6 +136,9 @@ func newDocxBuilder(name string, ms *Manuscript) (*docxBuilder, error) {
 	}, nil
 }
 
+// paragraphProp returns the [ctypes.ParagaphProp] for a paragraph, this will
+// be configured with the appropriate line height, which will be double spacing
+// or close to.
 func (b *docxBuilder) paragraphProp() *ctypes.ParagraphProp {
 	line := 500
 	after := uint64(0)
@@ -122,6 +151,9 @@ func (b *docxBuilder) paragraphProp() *ctypes.ParagraphProp {
 	return prop
 }
 
+// defaultRun returns the [docx.Run] to be applied to a paragraph, this will
+// ensure the font and color will match the default, and set the font size to
+// the given size.
 func (b *docxBuilder) defaultRun(r *docx.Run, size uint64) *docx.Run {
 	r.Font(b.font)
 	r.Color(b.color)
