@@ -95,6 +95,9 @@ loop:
 }
 
 func printChapter(ch *Chapter) {
+	if number := ch.Number(); number != "" {
+		fmt.Println(number)
+	}
 	fmt.Println(ch.Title())
 	fmt.Println()
 

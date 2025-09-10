@@ -8,12 +8,11 @@
 .DOCTYPE CHAPTER
 .TITLE   "\*[$DOCTITLE]"
 
-.CHAPTER_TITLE "CHAPTER ONE"
+.CHAPTER I
 .START
 .EPIGRAPH
 JONATHAN HARKER’S JOURNAL
 (\*[IT]Kept in shorthand.\*[PREV])
-
 .EPIGRAPH OFF
 .PP
 .DROPCAP 3 3
@@ -483,7 +482,7 @@ ray of light, and whose broken battlements showed a jagged line against the
 moonlit sky.
 .COLLATE
 .DOCTYPE CHAPTER
-.CHAPTER_TITLE "CHAPTER TWO"
+.CHAPTER II
 .START
 .EPIGRAPH
 JONATHAN HARKER’S JOURNAL—\*[IT]continued\*[PREV]

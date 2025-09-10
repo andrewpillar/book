@@ -50,12 +50,16 @@ func lsCmd(cmd *Command, args []string) error {
 		}
 	}
 
-	for _, ch := range chapters {
+	for i, ch := range chapters {
 		if number {
-			fmt.Printf("%3d ", ch.Number)
+			fmt.Printf("%3d ", i+1)
 		}
 
 		title := ch.Title()
+
+		if title == "" {
+			title = ch.Number()
+		}
 		fmt.Print(title)
 
 		if wc {

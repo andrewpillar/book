@@ -68,10 +68,10 @@ func pubCmd(cmd *Command, args []string) error {
 
 		if len(chapters) > 1 {
 			name += "-chapters-"
-			name += strconv.Itoa(chapters[0].Number) + "-to-"
-			name += strconv.Itoa(chapters[len(chapters)-1].Number)
+			name += strconv.Itoa(chapters[0].Count) + "-to-"
+			name += strconv.Itoa(chapters[len(chapters)-1].Count)
 		} else {
-			name += "-chapter-" + strconv.Itoa(chapters[0].Number)
+			name += "-chapter-" + strconv.Itoa(chapters[0].Count)
 		}
 
 		ms.Tokens = toks

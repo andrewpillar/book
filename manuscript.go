@@ -275,13 +275,28 @@ func (ms *Manuscript) PrintStyle() string {
 type Chapter struct {
 	*Manuscript
 
-	Number int
-	Start  int
-	End    int
+	Count int
+	Start int
+	End   int
 }
 
 func (ch *Chapter) Tokens() []Token {
 	return ch.Manuscript.Tokens[ch.Start:ch.End]
+}
+
+func (ch *Chapter) Number() string {
+	number := ""
+
+	for _, tok := range ch.Tokens() {
+		if m, ok := tok.(*Macro); ok {
+			if m.Name == "CHAPTER" {
+				if len(m.Args) > 0 {
+					number = "Chapter " + m.Args[0]
+				}
+			}
+		}
+	}
+	return number
 }
 
 func (ch *Chapter) Title() string {
@@ -295,10 +310,6 @@ func (ch *Chapter) Title() string {
 				}
 			}
 		}
-	}
-
-	if title == "" {
-		title = strconv.Itoa(ch.Number)
 	}
 	return title
 }
@@ -325,53 +336,71 @@ func (ms *Manuscript) Chapters(names ...string) []*Chapter {
 	}
 
 	chapters := make([]*Chapter, 0)
-	num := 0
+	count := 0
 
-	for i, tok := range ms.Tokens {
+	sc := scanner{
+		toks: ms.Tokens,
+	}
+
+	for {
+		tok := sc.next()
+
+		if tok == nil {
+			break
+		}
+
 		if m, ok := tok.(*Macro); ok {
-			if m.Name == "CHAPTER" || m.Name == "CHAPTER_TITLE" {
-				num++
-
-				// Determine if we actually want this chapter returned in the slice.
-				if len(names) > 0 {
-					title := strconv.Itoa(num)
-
-					// First check to see the chapter number itself has been
-					// given. If not, fallback to the chapter title itself.
-					if _, ok := set[title]; !ok {
-						if m.Name == "CHAPTER_TITLE" && len(m.Args) > 0 {
-							title = m.Args[0]
-						}
-
-						if _, ok := set[title]; !ok {
-							continue
-						}
-					}
-				}
-
-				ch := Chapter{
-					Manuscript: ms,
-					Number:     num,
-					Start:      i,
-				}
-
-				for j, tok := range ms.Tokens[ch.Start:] {
-					if m, ok := tok.(*Macro); ok {
-						if m.Name == "COLLATE" {
-							ch.End = i + j + 1
-							break
-						}
-					}
-
-					// If the end has not been set because there is no COLLATE
-					// then assume this is the last chapter and EOF, so set the
-					// end to the end of the token slice.
-					if j == len(ms.Tokens[ch.Start:])-1 {
-						ch.End = i + j + 1
-					}
-				}
-				chapters = append(chapters, &ch)
+			ch := Chapter{
+				Manuscript: ms,
 			}
+
+			if m.Name == "CHAPTER" {
+				count++
+
+				ch.Count = count
+				ch.Start = sc.pos
+
+				tok = sc.next()
+				goto parseChapter
+			}
+
+			if m.Name == "CHAPTER_TITLE" {
+				count++
+
+				ch.Count = count
+				ch.Start = sc.pos
+
+				tok = sc.next()
+			}
+
+		parseChapter:
+			for {
+				if tok == nil {
+					ch.End = sc.pos
+					break
+				}
+
+				if m, ok := tok.(*Macro); ok {
+					if m.Name == "COLLATE" {
+						ch.End = sc.pos
+						break
+					}
+				}
+				tok = sc.next()
+			}
+
+			if len(names) > 0 {
+				scount := strconv.Itoa(count)
+
+				if _, ok := set[scount]; !ok {
+					title := ch.Title()
+
+					if _, ok := set[title]; ok {
+						continue
+					}
+				}
+			}
+			chapters = append(chapters, &ch)
 		}
 	}
 	return chapters

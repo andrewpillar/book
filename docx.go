@@ -252,20 +252,43 @@ loop:
 }
 
 func (b *docxBuilder) buildChapter(ch *Chapter) error {
-	title, err := b.doc.AddHeading("", 1)
+	if number := ch.Number(); number != "" {
+		hdr, err := b.doc.AddHeading("", 1)
 
-	if err != nil {
-		return err
+		if err != nil {
+			return err
+		}
+
+		line := 0
+
+		hdr.GetCT().Property = b.paragraphProp()
+		hdr.GetCT().Property.Spacing = &ctypes.Spacing{
+			Line: &line,
+		}
+		hdr.Justification(stypes.JustificationCenter)
+
+		run := hdr.AddText(number)
+
+		run = b.defaultRun(run, 18)
+		run.Bold(true)
 	}
 
-	title.GetCT().Property = b.paragraphProp()
-	title.Justification(stypes.JustificationCenter)
+	if title := ch.Title(); title != "" {
+		hdr, err := b.doc.AddHeading("", 1)
 
-	run := title.AddText(ch.Title())
+		if err != nil {
+			return err
+		}
 
-	run = b.defaultRun(run, 18)
-	run.Bold(true)
-	run.Italic(true)
+		hdr.GetCT().Property = b.paragraphProp()
+		hdr.Justification(stypes.JustificationCenter)
+
+		run := hdr.AddText(title)
+
+		run = b.defaultRun(run, 18)
+		run.Bold(true)
+		run.Italic(true)
+	}
 
 	sc := scanner{
 		toks: ch.Tokens(),
