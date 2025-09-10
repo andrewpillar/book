@@ -11,7 +11,7 @@ import (
 var CleanCmd = &Command{
 	Usage: "clean",
 	Short: "remove pdf files for manuscripts",
-	Long: `Remove the PDF files for the published manuscripts.
+	Long: `Remove the DOCX and PDF files for the published manuscripts.
 
 The -v flag will print out the names of each file deleted.`,
 	Run: cleanCmd,
@@ -33,11 +33,19 @@ func cleanCmd(cmd *Command, args []string) error {
 	for _, name := range names {
 		name = name[:len(name)-4]
 
-		matches, err := filepath.Glob(name + "*.pdf")
+		pdfMatches, err := filepath.Glob(name + "*.pdf")
 
 		if err != nil {
 			return err
 		}
+
+		docxMatches, err := filepath.Glob(name + "*.docx")
+
+		if err != nil {
+			return err
+		}
+
+		matches := append(docxMatches, pdfMatches...)
 
 		for _, match := range matches {
 			if err := os.Remove(match); err != nil {
