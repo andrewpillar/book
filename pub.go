@@ -8,10 +8,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 var PubCmd = &Command{
-	Usage: "pub <-f docx|pdf> <file> [chapter,...]",
+	Usage: "pub <-f docx|pdf> <-wc count> <file> [chapter,...]",
 	Short: "publish the manuscript into a pdf",
 	Long: `Publish the manuscript into the given format, either docx or pdf as specified via
 the -f flag. If pdf, then groff is used under the hood to produce the final pdf.`,
@@ -19,10 +20,14 @@ the -f flag. If pdf, then groff is used under the hood to produce the final pdf.
 }
 
 func pubCmd(cmd *Command, args []string) error {
-	var format string
+	var (
+		format string
+		wc     int
+	)
 
 	fs := flag.NewFlagSet(cmd.Argv0, flag.ExitOnError)
 	fs.StringVar(&format, "f", "", "the format to publish in, either docx or pdf")
+	fs.IntVar(&wc, "wc", 0, "the number of words to publish")
 	fs.Parse(args)
 
 	args = fs.Args()
@@ -75,6 +80,29 @@ func pubCmd(cmd *Command, args []string) error {
 		}
 
 		ms.Tokens = toks
+	}
+
+	if wc > 0 {
+		sum := 0
+		pos := 0
+
+		for i, tok := range ms.Tokens {
+			if sum >= wc {
+				pos = i
+				break
+			}
+
+			if txt, ok := tok.(*Text); ok {
+				if txt.Value == "" || txt.Value == " " {
+					continue
+				}
+				sum += len(strings.Split(strings.TrimSpace(txt.Value), " "))
+			}
+		}
+
+		name += "-first-" + strconv.Itoa(wc) + "-words"
+
+		ms.Tokens = ms.Tokens[:pos]
 	}
 
 	name += "." + format

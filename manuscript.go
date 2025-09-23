@@ -191,30 +191,24 @@ func ParseManuscript(name string) (*Manuscript, error) {
 				var m Macro
 
 				buf := BufferString(line)
+				buf.Get()
 
 				quoted := false
 				r := buf.Get()
 
+				for r != ' ' && r != '\t' && r != -1 {
+					tmp = append(tmp, r)
+					r = buf.Get()
+				}
+
+				m.Name = string(tmp)
+				tmp = tmp[0:0]
+
+				for r == ' ' || r == '\t' {
+					r = buf.Get()
+				}
+
 				for r != -1 {
-					if r == '.' && m.Name == "" {
-						r = buf.Get()
-
-						for r != ' ' && r != '\t' && r != -1 {
-							tmp = append(tmp, r)
-							r = buf.Get()
-						}
-
-						m.Name = string(tmp)
-						tmp = tmp[0:0]
-
-						r = buf.Get()
-
-						for r == ' ' || r == '\t' {
-							r = buf.Get()
-						}
-						continue
-					}
-
 					if r == '"' {
 						quoted = !quoted
 						r = buf.Get()
@@ -396,6 +390,11 @@ func (ms *Manuscript) Chapters(names ...string) []*Chapter {
 		}
 
 		if m, ok := tok.(*Macro); ok {
+			if m.Name != "CHAPTER" && m.Name != "CHAPTER_TITLE" {
+				tok = sc.next()
+				continue
+			}
+
 			ch := Chapter{
 				Manuscript: ms,
 			}
@@ -404,7 +403,7 @@ func (ms *Manuscript) Chapters(names ...string) []*Chapter {
 				count++
 
 				ch.Count = count
-				ch.Start = sc.pos
+				ch.Start = sc.pos - 1
 
 				tok = sc.next()
 
@@ -418,7 +417,7 @@ func (ms *Manuscript) Chapters(names ...string) []*Chapter {
 				count++
 
 				ch.Count = count
-				ch.Start = sc.pos
+				ch.Start = sc.pos - 1
 
 				tok = sc.next()
 			}
@@ -433,6 +432,7 @@ func (ms *Manuscript) Chapters(names ...string) []*Chapter {
 				if m, ok := tok.(*Macro); ok {
 					if m.Name == "COLLATE" {
 						ch.End = sc.pos
+						tok = sc.next()
 						break
 					}
 				}

@@ -45,7 +45,13 @@ func lsCmd(cmd *Command, args []string) error {
 	pad := 0
 
 	for _, ch := range chapters {
-		if l := utf8.RuneCountInString(ch.Title()); l > pad {
+		title := ch.Title()
+
+		if title == "" {
+			title = ch.Number()
+		}
+
+		if l := utf8.RuneCountInString(title); l > pad {
 			pad = l
 		}
 	}
