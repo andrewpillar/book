@@ -68,7 +68,7 @@ func pubCmd(cmd *Command, args []string) error {
 		}
 
 		for _, ch := range chapters {
-			toks = append(toks, ch.Tokens()...)
+			toks = append(toks, ch.Tokens...)
 		}
 
 		if len(chapters) > 1 {

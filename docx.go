@@ -323,7 +323,7 @@ func (b *docxBuilder) buildChapter(ch *Chapter) error {
 	}
 
 	sc := scanner{
-		toks: ch.Tokens(),
+		toks: ch.Tokens,
 	}
 
 	indent := false

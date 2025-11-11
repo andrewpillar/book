@@ -102,7 +102,7 @@ func printChapter(ch *Chapter) {
 	fmt.Println()
 
 	sc := scanner{
-		toks: ch.Tokens(),
+		toks: ch.Tokens,
 	}
 
 	indent := false

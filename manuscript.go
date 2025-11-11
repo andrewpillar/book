@@ -306,22 +306,15 @@ func (ms *Manuscript) PrintStyle() string {
 type Chapter struct {
 	*Manuscript
 
-	Count int
-	Start int
-	End   int
-}
-
-// Tokens returns the slice of tokens that make up the contents of the chapter
-// within the manuscript.
-func (ch *Chapter) Tokens() []Token {
-	return ch.Manuscript.Tokens[ch.Start:ch.End]
+	Count  int
+	Tokens []Token
 }
 
 // Number returns the number of the chapter as specified via CHAPTER.
 func (ch *Chapter) Number() string {
 	number := ""
 
-	for _, tok := range ch.Tokens() {
+	for _, tok := range ch.Tokens {
 		if m, ok := tok.(*Macro); ok {
 			if m.Name == "CHAPTER" {
 				if len(m.Args) > 0 {
@@ -337,7 +330,7 @@ func (ch *Chapter) Number() string {
 func (ch *Chapter) Title() string {
 	title := ""
 
-	for _, tok := range ch.Tokens() {
+	for _, tok := range ch.Tokens {
 		if m, ok := tok.(*Macro); ok {
 			if m.Name == "CHAPTER_TITLE" {
 				if len(m.Args) > 0 {
@@ -353,7 +346,7 @@ func (ch *Chapter) Title() string {
 func (ch *Chapter) WordCount() int {
 	wc := 0
 
-	for _, tok := range ch.Tokens() {
+	for _, tok := range ch.Tokens {
 		if txt, ok := tok.(*Text); ok {
 			if txt.Value == "" || txt.Value == " " {
 				continue
@@ -399,11 +392,13 @@ func (ms *Manuscript) Chapters(names ...string) []*Chapter {
 				Manuscript: ms,
 			}
 
+			var start, end int
+
 			if m.Name == "CHAPTER" {
 				count++
 
 				ch.Count = count
-				ch.Start = sc.pos - 1
+				start = sc.pos - 1
 
 				tok = sc.next()
 
@@ -417,7 +412,7 @@ func (ms *Manuscript) Chapters(names ...string) []*Chapter {
 				count++
 
 				ch.Count = count
-				ch.Start = sc.pos - 1
+				start = sc.pos - 1
 
 				tok = sc.next()
 			}
@@ -425,13 +420,13 @@ func (ms *Manuscript) Chapters(names ...string) []*Chapter {
 		parseChapter:
 			for {
 				if tok == nil {
-					ch.End = sc.pos
+					end = sc.pos
 					break
 				}
 
 				if m, ok := tok.(*Macro); ok {
 					if m.Name == "COLLATE" {
-						ch.End = sc.pos
+						end = sc.pos
 						tok = sc.next()
 						break
 					}
@@ -447,11 +442,15 @@ func (ms *Manuscript) Chapters(names ...string) []*Chapter {
 				if _, ok := set[scount]; !ok {
 					title := ch.Title()
 
-					if _, ok := set[title]; ok {
+					if _, ok := set[title]; !ok {
 						continue
 					}
 				}
 			}
+
+			ch.Tokens = make([]Token, end-start)
+			copy(ch.Tokens, ms.Tokens[start:end])
+
 			chapters = append(chapters, &ch)
 		}
 	}
