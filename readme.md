@@ -106,6 +106,18 @@ formatted to reflect that. For example,
     $ book pub -f pdf dracula.mom 1 2
     dracula-chapters-1-to-2.pdf
 
+Sometimes a literary agent will request a sample of a manuscript based off a
+given word count. To only publish a certain number of words from the manuscript
+pass the `-wc` flag,
+
+    $ book pub -f docx -wc 10000 dracula.mom
+    dracula-first-10000-words.docx
+
+This flag also works with specified chapters too,
+
+    $ book pub -f docx -wc 7000 dracula.mom 1 2
+
+
 ## PDF
 
 The PDF format requires [groff][]. If using Linux, then this should already be
