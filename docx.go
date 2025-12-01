@@ -110,17 +110,18 @@ func (sc *scanner) next() Token {
 }
 
 type docxBuilder struct {
-	name  string
-	font  string
-	color string
-	ms    *Manuscript
-	doc   *docx.RootDoc
+	name     string
+	font     string
+	color    string
+	ms       *Manuscript
+	chapters []string
+	doc      *docx.RootDoc
 }
 
 // newDocxBuilder returns a docxBuilder for building the given [Manuscript]
 // into a DOCX file of the given name. The font and color for the document will
 // be Times New Roman and #000000 respectively.
-func newDocxBuilder(name string, ms *Manuscript) (*docxBuilder, error) {
+func newDocxBuilder(name string, ms *Manuscript, chapters ...string) (*docxBuilder, error) {
 	doc, err := godocx.NewDocument()
 
 	if err != nil {
@@ -128,11 +129,12 @@ func newDocxBuilder(name string, ms *Manuscript) (*docxBuilder, error) {
 	}
 
 	return &docxBuilder{
-		name:  name,
-		font:  "Times New Roman",
-		color: "#000000",
-		ms:    ms,
-		doc:   doc,
+		name:     name,
+		font:     "Times New Roman",
+		color:    "#000000",
+		ms:       ms,
+		chapters: chapters,
+		doc:      doc,
 	}, nil
 }
 

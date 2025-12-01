@@ -78,7 +78,6 @@ func pubCmd(cmd *Command, args []string) error {
 		} else {
 			name += "-chapter-" + strconv.Itoa(chapters[0].Count)
 		}
-
 		ms.Tokens = toks
 	}
 
@@ -120,7 +119,7 @@ func pubCmd(cmd *Command, args []string) error {
 
 	switch format {
 	case "docx":
-		docx, err := newDocxBuilder(name, ms)
+		docx, err := newDocxBuilder(name, ms, args...)
 
 		if err != nil {
 			return err

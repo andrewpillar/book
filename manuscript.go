@@ -375,13 +375,9 @@ func (ms *Manuscript) Chapters(names ...string) []*Chapter {
 		toks: ms.Tokens,
 	}
 
-	for {
-		tok := sc.next()
+	tok := sc.next()
 
-		if tok == nil {
-			break
-		}
-
+	for tok != nil {
 		if m, ok := tok.(*Macro); ok {
 			if m.Name != "CHAPTER" && m.Name != "CHAPTER_TITLE" {
 				tok = sc.next()
@@ -437,9 +433,11 @@ func (ms *Manuscript) Chapters(names ...string) []*Chapter {
 			// Filter out the chapters that have been specified, if any. First we check
 			// for chapter counts, then fallback to checking chapter titles.
 			if len(names) > 0 {
-				scount := strconv.Itoa(count)
+				n := strconv.Itoa(count)
 
-				if _, ok := set[scount]; !ok {
+				_, ok := set[n]
+
+				if !ok {
 					title := ch.Title()
 
 					if _, ok := set[title]; !ok {
@@ -452,7 +450,18 @@ func (ms *Manuscript) Chapters(names ...string) []*Chapter {
 			copy(ch.Tokens, ms.Tokens[start:end])
 
 			chapters = append(chapters, &ch)
+
+			m, ok = tok.(*Macro)
+
+			if ok {
+				// If the next token we encounter is for a macro, then immediately
+				// go to the next iteration to parse it, so we don't skip it.
+				if m.Name == "CHAPTER" || m.Name == "CHAPTER_TITLE" {
+					continue
+				}
+			}
 		}
+		tok = sc.next()
 	}
 	return chapters
 }
