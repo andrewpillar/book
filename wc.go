@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 )
@@ -12,7 +11,11 @@ var WcCmd = &Command{
 	Run:   wcCmd,
 }
 
-var ErrNoSuchChapter = errors.New("no such chapter")
+type ChapterNotFoundError string
+
+func (e ChapterNotFoundError) Error() string {
+	return fmt.Sprintf("no such chapter %s", string(e))
+}
 
 func formatNumber(n int) string {
 	s := strconv.FormatInt(int64(n), 10)
@@ -51,6 +54,7 @@ func wcCmd(cmd *Command, args []string) error {
 				return nil
 			}
 		}
+		return ChapterNotFoundError(chapter)
 	}
 
 	sum := 0
