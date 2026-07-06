@@ -355,6 +355,11 @@ func (b *docxBuilder) buildTitlePage() error {
 		Val: stypes.OnOffOn,
 	}
 
+	// Precede with blank paragraphs so that the title is centered.
+	for i := 0; i < 10; i++ {
+		b.doc.AddParagraph("")
+	}
+
 	title, err := b.doc.AddHeading("", 0)
 
 	if err != nil {
