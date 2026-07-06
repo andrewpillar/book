@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"flag"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -161,7 +160,5 @@ func pubCmd(cmd *Command, args []string) error {
 	default:
 		return errors.New("unrecognized publish format")
 	}
-
-	fmt.Println(name)
 	return nil
 }
