@@ -119,9 +119,15 @@ func (m *Macro) WriteTo(w io.Writer) error {
 		return err
 	}
 
-	for _, arg := range m.Args {
-		if _, err := fmt.Fprintf(w, "%q ", arg); err != nil {
+	for i, arg := range m.Args {
+		if _, err := fmt.Fprintf(w, "%s", arg); err != nil {
 			return err
+		}
+
+		if i != len(m.Args)-1 {
+			if _, err := fmt.Fprintf(w, " "); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -211,8 +217,6 @@ func ParseManuscript(name string) (*Manuscript, error) {
 				for r != -1 {
 					if r == '"' {
 						quoted = !quoted
-						r = buf.Get()
-						continue
 					}
 
 					if r == ' ' && !quoted {

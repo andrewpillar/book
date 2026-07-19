@@ -16,7 +16,7 @@ func Test_ManuscriptDocTitle(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if title := ms.DocTitle(); title != "DRACULA" {
+	if title := ms.DocTitle(); title != `"DRACULA"` {
 		t.Fatalf("unexpected DOCTITLE, expected=%q, got=%q\n", "DRACULA", title)
 	}
 }
@@ -28,7 +28,7 @@ func Test_ManuscriptAuthor(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if title := ms.Author(); title != "Bram Stoker" {
+	if title := ms.Author(); title != `"Bram Stoker"` {
 		t.Fatalf("unexpected AUTHOR, expected=%q, got=%q\n", "Bram Stoker", title)
 	}
 }
