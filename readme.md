@@ -117,7 +117,6 @@ This flag also works with specified chapters too,
 
     $ book pub -f docx -wc 7000 dracula.mom 1 2
 
-
 ## PDF
 
 The PDF format requires [groff][]. If using Linux, then this should already be
@@ -131,9 +130,9 @@ command,
     $ book pub -f pdf dracula.mom
     dracula.pdf
 
-Under the hood this runs the following groff command,
+Under the hood this runs the following pfdmom command,
 
-    $ groff -k -mom -T pdf <file>.mom > <file>.pdf
+    $ pdfmom -k <file>.mom > <file>.pdf
 
 ## DOCX
 
@@ -152,6 +151,7 @@ the PDF format. At the bare minimum it will ensure:
 * Times New Roman
 * Font size 12pt
 * Double spaced lines
+* Line indentations
 
 There are many features available via the groff mom macro set that are not
 implemented in the DOCX format produced via book. Under the hood this uses the
