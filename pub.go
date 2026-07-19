@@ -14,7 +14,7 @@ var PubCmd = &Command{
 	Usage: "pub <-f docx|pdf> <-wc count> <file> [chapter,...]",
 	Short: "publish the manuscript into a pdf",
 	Long: `Publish the manuscript into the given format, either docx or pdf as specified via
-the -f flag. If pdf, then groff is used under the hood to produce the final pdf.`,
+the -f flag. If pdf, then pfdmom is used under the hood to produce the final pdf.`,
 	Run: pubCmd,
 }
 
@@ -149,7 +149,7 @@ func pubCmd(cmd *Command, args []string) error {
 
 		defer f.Close()
 
-		c := exec.Command("groff", "-k", "-mom", "-T", "pdf", tmp.Name())
+		c := exec.Command("pdfmom", "-k", tmp.Name())
 		c.Stdin = os.Stdin
 		c.Stdout = f
 		c.Stderr = os.Stderr
