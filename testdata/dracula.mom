@@ -1,6 +1,6 @@
 .MAC CHAPTER_ORNAMENT END
-.PDF_IMAGE "fangs.png" 3P 3P ADJUST -9P
-.SP -5P
+.    PDF_IMAGE "fangs.png" 3P 3P ADJUST -9P
+.    SP -5P
 .END
 
 .PAPER A5

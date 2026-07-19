@@ -101,6 +101,9 @@ type Token interface {
 
 // Macro represents a macro that has been parsed from the manuscript file.
 type Macro struct {
+	// Raw is the original macro text that was parsed.
+	Raw []rune
+
 	// Name is the macro name itself, either PP, or CHAPTER, etc.
 	Name string
 
@@ -111,27 +114,7 @@ type Macro struct {
 func (m *Macro) aToken() {}
 
 func (m *Macro) WriteTo(w io.Writer) error {
-	if _, err := io.WriteString(w, "."+m.Name); err != nil {
-		return err
-	}
-
-	if _, err := io.WriteString(w, " "); err != nil {
-		return err
-	}
-
-	for i, arg := range m.Args {
-		if _, err := fmt.Fprintf(w, "%s", arg); err != nil {
-			return err
-		}
-
-		if i != len(m.Args)-1 {
-			if _, err := fmt.Fprintf(w, " "); err != nil {
-				return err
-			}
-		}
-	}
-
-	if _, err := fmt.Fprintln(w); err != nil {
+	if _, err := fmt.Fprintln(w, string(m.Raw)); err != nil {
 		return err
 	}
 	return nil
@@ -194,13 +177,21 @@ func ParseManuscript(name string) (*Manuscript, error) {
 
 		if line != "" {
 			if line[0] == '.' {
-				var m Macro
+				m := Macro{
+					Raw: []rune(line),
+				}
 
 				buf := BufferString(line)
 				buf.Get()
 
 				quoted := false
 				r := buf.Get()
+
+				// Skip over white space, it is valid to have a space between the leading . and
+				// the name of the macro.
+				for r == ' ' || r == '\t' {
+					r = buf.Get()
+				}
 
 				for r != ' ' && r != '\t' && r != -1 {
 					tmp = append(tmp, r)
@@ -217,6 +208,8 @@ func ParseManuscript(name string) (*Manuscript, error) {
 				for r != -1 {
 					if r == '"' {
 						quoted = !quoted
+						r = buf.Get()
+						continue
 					}
 
 					if r == ' ' && !quoted {
