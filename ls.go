@@ -2,19 +2,21 @@ package main
 
 import (
 	"flag"
-	"fmt"
+	"path/filepath"
 	"strings"
 	"unicode/utf8"
 )
 
 var LsCmd = &Command{
-	Usage: "ls [-n] [-wc] <file>",
-	Short: "list chapters",
-	Long: `List the chapters in the given manuscript file.
+	Usage: "ls [-n] [-wc] [file]",
+	Short: "list manuscripts and their chapters",
+	Long: `List manuscripts in the current directory, if an argument is given, then this
+will list the manuscript's chapters.
 
-The -n flag will display chapter numbers.
+The -n flag will display chapter numbers, if listing a manuscript's chapters.
 
-The -wc flag will print the word count of each chapter.`,
+The -wc flag will print the word count of each manuscript, or each chapter if
+an individual manuscript was given.`,
 	Run: lsCmd,
 }
 
@@ -32,7 +34,44 @@ func lsCmd(cmd *Command, args []string) error {
 	args = fs.Args()
 
 	if len(args) == 0 {
-		return ErrUsage
+		names, err := filepath.Glob("*.mom")
+
+		if err != nil {
+			return err
+		}
+
+		books := make([]*Manuscript, 0, len(names))
+		pad := 0
+
+		for _, name := range names {
+			ms, err := ParseManuscript(name)
+
+			if err != nil {
+				return err
+			}
+
+			title := ms.DocTitle()
+
+			if l := utf8.RuneCountInString(title); l > pad {
+				pad = l
+			}
+			books = append(books, ms)
+		}
+
+		for _, b := range books {
+			title := b.DocTitle()
+
+			if wc {
+				if n := pad - utf8.RuneCountInString(title); n > 0 {
+					title += strings.Repeat(" ", n)
+				}
+
+				cmd.Printf("%s %6s\n", title, formatNumber(b.WordCount()))
+				continue
+			}
+			cmd.Println(title)
+		}
+		return nil
 	}
 
 	ms, err := ParseManuscript(args[0])
@@ -41,7 +80,12 @@ func lsCmd(cmd *Command, args []string) error {
 		return err
 	}
 
-	chapters := ms.Chapters()
+	chapters, err := ms.Chapters()
+
+	if err != nil {
+		return err
+	}
+
 	pad := 0
 
 	for _, ch := range chapters {
@@ -58,7 +102,7 @@ func lsCmd(cmd *Command, args []string) error {
 
 	for i, ch := range chapters {
 		if number {
-			fmt.Printf("%3d ", i+1)
+			cmd.Printf("%3d ", i+1)
 		}
 
 		title := ch.Title()
@@ -66,15 +110,15 @@ func lsCmd(cmd *Command, args []string) error {
 		if title == "" {
 			title = ch.Number()
 		}
-		fmt.Print(title)
+		cmd.Print(title)
 
 		if wc {
 			if n := pad - utf8.RuneCountInString(title); n > 0 {
-				fmt.Print(strings.Repeat(" ", n))
+				cmd.Print(strings.Repeat(" ", n))
 			}
-			fmt.Printf(" %6s", formatNumber(ch.WordCount()))
+			cmd.Printf(" %6s", formatNumber(ch.WordCount()))
 		}
-		fmt.Println()
+		cmd.Println()
 	}
 
 	return nil

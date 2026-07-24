@@ -20,6 +20,10 @@ type Command struct {
 	// name.
 	Run func(*Command, []string) error
 
+	Print   func(a ...any) (int, error)
+	Printf  func(format string, a ...any) (int, error)
+	Println func(a ...any) (int, error)
+
 	// Commands is the set of sub-commands the command could have.
 	Commands *CommandSet
 }
@@ -130,6 +134,18 @@ func (c *CommandSet) Add(name string, cmd *Command) {
 
 		cmd.Argv0 = c.Argv0 + " " + name
 		cmd.Usage = c.Argv0 + " " + cmd.Usage
+
+		if cmd.Print == nil {
+			cmd.Print = fmt.Print
+		}
+
+		if cmd.Printf == nil {
+			cmd.Printf = fmt.Printf
+		}
+
+		if cmd.Println == nil {
+			cmd.Println = fmt.Println
+		}
 
 		c.names = append(c.names, name)
 		c.cmds[name] = cmd

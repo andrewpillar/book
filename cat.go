@@ -1,129 +1,9 @@
 package main
 
-import (
-	"bytes"
-	"fmt"
-	"strings"
-)
-
 var CatCmd = &Command{
 	Usage: "cat <file> [chapter,...]",
 	Short: "print out text content of the manuscript",
 	Run:   catCmd,
-}
-
-func printText(txt string) {
-	sc := scanner{
-		toks: tokenize(txt),
-	}
-
-	for {
-		tok := sc.next()
-
-		if tok == nil {
-			break
-		}
-
-		if txt, ok := tok.(*Text); ok {
-			fmt.Print(txt.Value)
-		}
-	}
-}
-
-func printEpigraph(sc *scanner) {
-loop:
-	for {
-		tok := sc.next()
-
-		if tok == nil {
-			break
-		}
-
-		switch v := tok.(type) {
-		case *Macro:
-			if v.Name == "EPIGRAPH" {
-				if len(v.Args) > 0 && v.Args[0] == "OFF" {
-					break loop
-				}
-			}
-		case *Text:
-			printText(v.Value)
-		}
-	}
-
-	fmt.Println()
-	fmt.Println()
-}
-
-func printParagraph(sc *scanner, indent bool) {
-	start := true
-
-	var buf bytes.Buffer
-
-loop:
-	for {
-		tok := sc.next()
-
-		if tok == nil {
-			break
-		}
-
-		switch v := tok.(type) {
-		case *Macro:
-			switch v.Name {
-			case "DROPCAP":
-				if len(v.Args) > 0 {
-					buf.WriteString(v.Args[0])
-				}
-			case "PP":
-				sc.back()
-				break loop
-			}
-		case *Text:
-			if start && indent {
-				buf.WriteString("        ")
-				start = false
-			}
-			buf.WriteString(v.Value)
-			buf.WriteString(" ")
-		}
-	}
-
-	buf.WriteString("\n")
-
-	printText(strings.TrimSuffix(buf.String(), " "))
-}
-
-func printChapter(ch *Chapter) {
-	if number := ch.Number(); number != "" {
-		fmt.Println(number)
-	}
-	fmt.Println(ch.Title())
-	fmt.Println()
-
-	sc := scanner{
-		toks: ch.Tokens,
-	}
-
-	indent := false
-
-	for {
-		tok := sc.next()
-
-		if tok == nil {
-			break
-		}
-
-		if m, ok := tok.(*Macro); ok {
-			switch m.Name {
-			case "EPIGRAPH":
-				printEpigraph(&sc)
-			case "PP":
-				printParagraph(&sc, indent)
-				indent = true
-			}
-		}
-	}
 }
 
 func catCmd(cmd *Command, args []string) error {
@@ -140,14 +20,96 @@ func catCmd(cmd *Command, args []string) error {
 		return err
 	}
 
-	chapters := ms.Chapters(args...)
+	sc := Scanner{
+		Tokens: ms.Tokens,
+	}
 
-	for i, ch := range chapters {
-		printChapter(ch)
+	if len(args) > 0 {
+		chapters, err := ms.Chapters(args...)
 
-		if i != len(chapters)-1 {
-			fmt.Println()
+		if err != nil {
+			return err
 		}
+
+		sc.Tokens = sc.Tokens[0:0]
+
+		for _, tok := range ms.Tokens {
+			if m, ok := tok.(*Macro); ok {
+				switch m.Name {
+				case "DOCTITLE":
+					sc.Tokens = append(sc.Tokens, m)
+				case "AUTHOR":
+					sc.Tokens = append(sc.Tokens, m)
+				}
+			}
+		}
+
+		for _, ch := range chapters {
+			sc.Tokens = append(sc.Tokens, ch.Tokens...)
+		}
+
+		last := sc.Tokens[len(sc.Tokens)-1]
+
+		if m, ok := last.(*Macro); ok {
+			// Remove trailing COLLATE macro to prevent superfluous newlines
+			// from being printed.
+			if m.Name == "COLLATE" {
+				sc.Tokens = sc.Tokens[:len(sc.Tokens)-1]
+			}
+		}
+	}
+
+	tok := sc.Next()
+
+	for tok != nil {
+		if m, ok := tok.(*Macro); ok {
+			switch m.Name {
+			case "DOCTITLE":
+				title := m.Arg(0)
+				author := ""
+
+				tok = sc.Next()
+
+				for {
+					if tok == nil {
+						return nil
+					}
+					if m, ok := tok.(*Macro); ok && m.Name == "AUTHOR" {
+						author = m.Arg(0)
+						break
+					}
+					tok = sc.Next()
+				}
+
+				cmd.Println(title, "by", author)
+				cmd.Println()
+			case "CHAPTER":
+				chapterStr := "CHAPTER"
+
+				if tok := sc.Peek(); tok != nil {
+					if m, ok := tok.(*Macro); ok && m.Name == "CHAPTER_STRING" {
+						chapterStr = m.Arg(0)
+						sc.Next()
+					}
+				}
+				cmd.Println(chapterStr, m.Arg(0))
+			case "CHAPTER_TITLE":
+				cmd.Println(m.Arg(0))
+				cmd.Println()
+			case "EPIGRAPH":
+				cmd.Println()
+				PrintEpigraph(cmd, &sc)
+			case "PP":
+				PrintParagraph(cmd, &sc)
+
+				if sc.Peek() != nil {
+					cmd.Println()
+					cmd.Println()
+				}
+			case "COLLATE":
+			}
+		}
+		tok = sc.Next()
 	}
 	return nil
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 )
@@ -16,6 +17,8 @@ type ChapterNotFoundError string
 func (e ChapterNotFoundError) Error() string {
 	return fmt.Sprintf("no such chapter %s", string(e))
 }
+
+var ErrNoChapters = errors.New("no chapters")
 
 func formatNumber(n int) string {
 	s := strconv.FormatInt(int64(n), 10)
@@ -33,11 +36,6 @@ func wcCmd(cmd *Command, args []string) error {
 	}
 
 	file := args[0]
-	chapter := ""
-
-	if len(args) > 1 {
-		chapter = args[1]
-	}
 
 	ms, err := ParseManuscript(file)
 
@@ -45,25 +43,45 @@ func wcCmd(cmd *Command, args []string) error {
 		return err
 	}
 
-	chapters := ms.Chapters()
+	chapters, err := ms.Chapters()
 
-	if chapter != "" {
-		for _, ch := range chapters {
+	if err != nil {
+		return err
+	}
+
+	if len(args) > 1 {
+		if len(chapters) == 0 {
+			return ErrNoChapters
+		}
+
+		chapter := args[1]
+
+		for i, ch := range chapters {
+			n, err := strconv.Atoi(chapter)
+
+			if err == nil {
+				if i+1 == n {
+					cmd.Println(formatNumber(ch.WordCount()))
+					return nil
+				}
+			}
+
 			if ch.Title() == chapter {
-				fmt.Println(formatNumber(ch.WordCount()))
+				cmd.Println(formatNumber(ch.WordCount()))
 				return nil
 			}
 		}
 		return ChapterNotFoundError(chapter)
 	}
 
-	sum := 0
+	wc := ms.WordCount()
 
-	for _, ch := range chapters {
-		sum += ch.WordCount()
+	if len(chapters) > 0 {
+		cmd.Println("Average chapter word count:", formatNumber(wc/len(chapters)))
+		cmd.Println("Manuscript word count:     ", formatNumber(wc))
+		return nil
 	}
 
-	fmt.Println("Average chapter word count:", formatNumber(sum/len(chapters)))
-	fmt.Println("Manuscript word count:     ", formatNumber(sum))
+	cmd.Println("Manuscript word count:", formatNumber(wc))
 	return nil
 }

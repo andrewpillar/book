@@ -8,7 +8,7 @@ import (
 func run(args []string) error {
 	cmds := CommandSet{
 		Argv0: os.Args[0],
-		Long: `book is a tool for working with groff manuscripts for writing books.
+		Long: `book is a tool for working with groff mom manuscripts for writing books.
 
 Usage:
 

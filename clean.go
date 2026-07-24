@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"flag"
-	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -55,7 +54,7 @@ func cleanCmd(cmd *Command, args []string) error {
 			}
 
 			if verbose {
-				fmt.Println(match)
+				cmd.Println(match)
 			}
 		}
 	}

@@ -54,7 +54,12 @@ func pubCmd(cmd *Command, args []string) error {
 	// If chapters have been given, then make sure the manuscript only
 	// contains that chapters we want to publish.
 	if len(args) > 0 {
-		chapters := ms.Chapters(args...)
+		chapters, err := ms.Chapters(args...)
+
+		if err != nil {
+			return err
+		}
+
 		toks := make([]Token, 0, len(ms.Tokens))
 
 		for _, tok := range ms.Tokens {

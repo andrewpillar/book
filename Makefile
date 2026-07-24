@@ -18,7 +18,7 @@ mod:
 	go mod tidy
 
 test:
-	go test -v -cover
+	go test -v -cover -coverprofile book.cover
 
 build: $(BUILD_DEPS)
 	mkdir -p $(BIN)
