@@ -133,6 +133,16 @@ func pubCmd(cmd *Command, args []string) error {
 			return err
 		}
 	case "pdf":
+		// Passing full filepaths to the pub command is valid. However, this can
+		// sometimes fail, if the given manuscript makes use of PDF_IMAGE which
+		// takes relative filepaths. Changing into the source directory of the
+		// file being published ensures failures because of this do not happen.
+		dir := filepath.Dir(file)
+
+		if err := os.Chdir(dir); err != nil {
+			return err
+		}
+
 		tmp, err := os.CreateTemp("", name)
 
 		if err != nil {
