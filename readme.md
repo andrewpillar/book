@@ -43,7 +43,12 @@ information, and the authorship taken from the git configuration,
     .AUTHOR     "Bram Stoker"
     .COPYRIGHT  DOC_COVER "1897 \*[$AUTHOR]"
     .DOC_COVER  TITLE AUTHOR COPYRIGHT
-    
+
+    .RECTO_VERSO
+
+    .HEADER_RECTO CENTER "\E*[$AUTHOR]"
+    .HEADER_VERSO CENTER "\E*[$DOCTITLE]"
+
     .DOCTYPE CHAPTER
     .TITLE   "\*[$DOCTITLE]"
 
