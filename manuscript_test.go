@@ -23,8 +23,8 @@ func TestManuscript(t *testing.T) {
 		t.Fatalf("ms.DocTitle() = %q, want = %q\n", title, "DRACULA")
 	}
 
-	if style := ms.PrintStyle(); style != "TYPESET" {
-		t.Fatalf("ms.PrintStyle() = %q, want = %q\n", style, "TYPESET")
+	if style := ms.PrintStyle(); style != "\\*[STYLE]" {
+		t.Fatalf("ms.PrintStyle() = %q, want = %q\n", style, "\\*[STYLE]")
 	}
 
 	m := ms.Macro("COPYRIGHT")
