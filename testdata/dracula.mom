@@ -1,6 +1,8 @@
 .MAC CHAPTER_ORNAMENT END
-.    PDF_IMAGE "fangs.png" 3P 3P ADJUST -9P
-.    SP -5P
+.    if \\n[#PRINT_STYLE]=2 \{
+.       PDF_IMAGE "fangs.png" 3P 3P ADJUST -10P
+.       SP -6P
+.    \}
 .END
 
 .PAPER A5
