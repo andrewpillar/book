@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
-	"strings"
 )
 
 var PubCmd = &Command{
@@ -96,10 +95,7 @@ func pubCmd(cmd *Command, args []string) error {
 			}
 
 			if txt, ok := tok.(*Text); ok {
-				if txt.Value == "" || txt.Value == " " {
-					continue
-				}
-				sum += len(strings.Split(strings.TrimSpace(txt.Value), " "))
+				sum += len(txt.Words())
 			}
 		}
 

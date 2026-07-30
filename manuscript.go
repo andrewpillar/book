@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -169,6 +170,23 @@ func (t *Text) WriteTo(w io.Writer) error {
 		return err
 	}
 	return nil
+}
+
+const emDash = "—"
+
+func (t *Text) Words() []string {
+	if t.Value == "" || t.Value == " " {
+		return nil
+	}
+
+	words := strings.Split(strings.TrimSpace(t.Value), " ")
+
+	for i, word := range words {
+		if strings.Contains(word, emDash) {
+			words = slices.Insert(words, i, strings.Split(word, emDash)...)
+		}
+	}
+	return words
 }
 
 // Inline represents an inline escape macro. This will not appear in the
@@ -441,10 +459,7 @@ func (ch *Chapter) WordCount() int {
 
 	for _, tok := range ch.Tokens {
 		if txt, ok := tok.(*Text); ok {
-			if txt.Value == "" || txt.Value == " " {
-				continue
-			}
-			wc += len(strings.Split(strings.TrimSpace(txt.Value), " "))
+			wc += len(txt.Words())
 		}
 	}
 	return wc
@@ -457,10 +472,7 @@ func (ms *Manuscript) WordCount() int {
 
 	for _, tok := range ms.Tokens {
 		if txt, ok := tok.(*Text); ok {
-			if txt.Value == "" || txt.Value == " " {
-				continue
-			}
-			wc += len(strings.Split(strings.TrimSpace(txt.Value), " "))
+			wc += len(txt.Words())
 		}
 	}
 	return wc
