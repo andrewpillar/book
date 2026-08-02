@@ -67,6 +67,20 @@ can be given to provide the word count for the chapter,
     1 CHAPTER ONE  5,701
     2 CHAPTER TWO  5,475
 
+When no arguments are given to `ls`, then manuscripts in the current directory
+will be listed,
+
+    $ book ls
+    DR. ACULA
+    DRACULA 2: HARKER BITES BACK
+    DRACULA
+
+when given the `-wc` flag the word counts for each will be printed,
+    $ book ls
+    DR. ACULA                       20,456
+    DRACULA 2: HARKER BITES BACK    5,789
+    DRACULA                         11,176
+
 Word count for the overall manuscript can be retrieved via `book wc`,
 
     $ book wc dracula.mom
