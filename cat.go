@@ -97,8 +97,8 @@ func catCmd(cmd *Command, args []string) error {
 				cmd.Println(m.Arg(0))
 				cmd.Println()
 			case "EPIGRAPH":
-				cmd.Println()
 				PrintEpigraph(cmd, &sc)
+				cmd.Println()
 			case "PP":
 				PrintParagraph(cmd, &sc)
 

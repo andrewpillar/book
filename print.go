@@ -41,7 +41,6 @@ loop:
 			cmd.Println()
 		}
 	}
-	cmd.Println()
 }
 
 func PrintParagraph(cmd *Command, sc *Scanner) {

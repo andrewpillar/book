@@ -99,6 +99,18 @@ func TestChapters(t *testing.T) {
 							Name: "START",
 						},
 						&Macro{
+							Raw:  []rune(".EPIGRAPH"),
+							Name: "EPIGRAPH",
+						},
+						&Text{
+							Value: "The epigraph.",
+						},
+						&Macro{
+							Raw:  []rune(".EPIGRAPH OFF"),
+							Name: "EPIGRAPH",
+							Args: []string{"OFF"},
+						},
+						&Macro{
 							Raw:  []rune(".PP"),
 							Name: "PP",
 						},

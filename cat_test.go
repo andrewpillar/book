@@ -24,6 +24,8 @@ func TestCat(t *testing.T) {
 CHAPTER I
 THE FIRST
 
+The epigraph.
+
 The first.
 
 CHAPTER II
