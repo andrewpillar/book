@@ -77,7 +77,7 @@ will be listed,
 
 when given the `-wc` flag the word counts for each will be printed,
 
-    $ book ls
+    $ book ls -wc
     DR. ACULA                       20,456
     DRACULA 2: HARKER BITES BACK    5,789
     DRACULA                         11,176
