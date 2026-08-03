@@ -119,6 +119,12 @@ func pubCmd(cmd *Command, args []string) error {
 
 	switch format {
 	case "docx":
+		dir := filepath.Dir(file)
+
+		if err := os.Chdir(dir); err != nil {
+			return err
+		}
+
 		docx, err := newDocxBuilder(name, ms, args...)
 
 		if err != nil {
