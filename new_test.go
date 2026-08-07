@@ -40,8 +40,8 @@ func TestNew(t *testing.T) {
 
 	want := fmt.Sprintf(`.DOCTITLE   "TestNew"
 .PRINTSTYLE "TYPESET"
-.TITLE      DOC_COVER "\*[$DOCTITLE]"
 .AUTHOR     "%s"
+.TITLE      DOC_COVER "\*[$DOCTITLE]"
 .PDF_TITLE  "\*[$AUTHOR] - \*[$DOCTITLE]"
 .COPYRIGHT  DOC_COVER "%d \*[$AUTHOR]"
 .DOC_COVER  TITLE AUTHOR COPYRIGHT
