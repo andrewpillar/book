@@ -42,6 +42,7 @@ func TestNew(t *testing.T) {
 .PRINTSTYLE "TYPESET"
 .TITLE      DOC_COVER "\*[$DOCTITLE]"
 .AUTHOR     "%s"
+.PDF_TITLE  "\*[$AUTHOR] - \*[$TITLE]"
 .COPYRIGHT  DOC_COVER "%d \*[$AUTHOR]"
 .DOC_COVER  TITLE AUTHOR COPYRIGHT
 
@@ -49,9 +50,6 @@ func TestNew(t *testing.T) {
 
 .HEADER_RECTO CENTER "\E*[$AUTHOR]"
 .HEADER_VERSO CENTER "\E*[$DOCTITLE]"
-
-.DOCTYPE CHAPTER
-.TITLE   "\*[$DOCTITLE]"
 
 
 `, author, time.Now().Year())
