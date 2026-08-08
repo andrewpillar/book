@@ -31,26 +31,26 @@ program specified via the `EDITOR` environment variable. Authorship information
 is derived from the git configuration, it is assumed that book will be used
 within a git repository.
 
-    $ book new "Dracula"
+    $ book new "DRACULA"
 
 The newly created `.mom` file will be populated with the given title, copyright
 information, and the authorship taken from the git configuration,
 
     $ cat dracula.mom
-    .DOCTITLE   "My Book"
+    .DOCTITLE   "DRACULA"
     .PRINTSTYLE "TYPESET"
-    .TITLE      DOC_COVER "\*[$DOCTITLE]"
     .AUTHOR     "Bram Stoker"
-    .COPYRIGHT  DOC_COVER "1897 \*[$AUTHOR]"
+    .TITLE      DOC_COVER "\*[$DOCTITLE]"
+    .PDF_TITLE  "\*[$AUTHOR] - \*[$DOCTITLE]"
+    .COPYRIGHT  DOC_COVER "2026 \*[$AUTHOR]"
     .DOC_COVER  TITLE AUTHOR COPYRIGHT
 
     .RECTO_VERSO
 
+    .HEADER_RULE OFF
     .HEADER_RECTO CENTER "\E*[$AUTHOR]"
     .HEADER_VERSO CENTER "\E*[$DOCTITLE]"
 
-    .DOCTYPE CHAPTER
-    .TITLE   "\*[$DOCTITLE]"
 
 Information of the manuscript can be viewed via the `ls`, and `wc` commands,
 which can be used for listing the chapters and providing a word count,
