@@ -161,7 +161,6 @@ format. To publish in the DOCX format, simply specify it via the `-f` flag with
 the `pub` command,
 
     $ book pub -f docx dracula.mom
-    dracula.docx
 
 ### A note on DOCX
 
