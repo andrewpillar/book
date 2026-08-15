@@ -3,6 +3,10 @@
 \# a reference to better understand how a manuscript file woull be structured
 \# and to demonstrate what formatting capabilities are possible with the
 \# typesetter.
+
+\# CHAPTER_ORNAMENT will display an image to be position above the title of a
+\# chapter. This will only be displayed if the PRINT_STYLE is set to 2 (the
+\# TYPESET style), when set to TYPEWRITE, no image is displayed.
 .MAC CHAPTER_ORNAMENT END
 .    if \\n[#PRINT_STYLE]=2 \{
 .       PDF_IMAGE "fangs.png" 3P 3P ADJUST -11P
