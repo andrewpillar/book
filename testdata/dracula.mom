@@ -1,3 +1,8 @@
+\# This manuscript file contains the first two chapters of Dracula written
+\# using the groff typesetter with the mom macro set. This should be used as
+\# a reference to better understand how a manuscript file woull be structured
+\# and to demonstrate what formatting capabilities are possible with the
+\# typesetter.
 .MAC CHAPTER_ORNAMENT END
 .    if \\n[#PRINT_STYLE]=2 \{
 .       PDF_IMAGE "fangs.png" 3P 3P ADJUST -11P
@@ -7,6 +12,9 @@
 
 .ds STYLE TYPESET
 
+\# When the STYLE is set to TYPEWRITE we want A4. The assumption here is that
+\# TYPEWRITE is being used for line editing, so we want larger pages to go with
+\# the larger text and spacing that comes with TYPEWRITE.
 .if '\*[STYLE]'TYPESET' .PAPER A5
 
 .DOCTITLE   "DRACULA"
