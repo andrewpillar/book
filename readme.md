@@ -172,12 +172,8 @@ the PDF format. At the bare minimum it will ensure:
 * Font size 12pt
 * Double spaced lines
 * Line indentations
+* Page number and count in footer
+* Copyright footer on cover page
 
 There are many features available via the groff mom macro set that are not
-implemented in the DOCX format produced via book. Under the hood this uses the
-[godocx][] library for producing DOCX files, which itself was inspired by the
-[python-docx][] library.
-
-[godocx]: https://pkg.go.dev/github.com/gomutex/godocx
-
-[python-docx]: https://python-docx.readthedocs.io/en/latest/
+implemented in the DOCX format produced via book.
