@@ -106,32 +106,33 @@ Manuscripts can be published into both the PDF and DOCX formats, via the `pub`
 command,
 
     $ book pub -f pdf dracula.mom
-    dracula.pdf
 
 Individual chapters of a manuscript can be published via passing the chapter
 names as additional arguments,
 
     $ book pub -f pdf dracula.mom "CHAPTER ONE"
-    dracula-chapter-1.pdf
 
 Chapter numbers can also be given in lieu of chapter titles,
 
     $ book pub -f pdf dracula.mom 1
-    dracula-chapter-1.pdf
 
 The `pub` command will print out the name of the published manuscript as the
 only output upon success. If chapters were specified then the name will be
 formatted to reflect that. For example,
 
     $ book pub -f pdf dracula.mom 1 2
-    dracula-chapters-1-to-2.pdf
+
+Chapter ranges can also be given by specifying the lower and upper bound between
+a `:`. The below command would publish a PDF with only the first three chapters
+of the manuscript,
+
+    $ book pub -f pdf dracula.mom 1:3
 
 Sometimes a literary agent will request a sample of a manuscript based off a
 given word count. To only publish a certain number of words from the manuscript
 pass the `-wc` flag,
 
     $ book pub -f docx -wc 10000 dracula.mom
-    dracula-first-10000-words.docx
 
 This flag also works with specified chapters too,
 
