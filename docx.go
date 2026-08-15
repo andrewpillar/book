@@ -2,334 +2,439 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
+	"time"
 
-	"github.com/gomutex/godocx"
-	"github.com/gomutex/godocx/docx"
-	"github.com/gomutex/godocx/wml/ctypes"
-	"github.com/gomutex/godocx/wml/stypes"
+	"github.com/mmonterroca/docxgo/v2"
+	"github.com/mmonterroca/docxgo/v2/domain"
 )
 
-type docxBuilder struct {
-	name     string
-	font     string
-	color    string
-	ms       *Manuscript
-	chapters []string
-	doc      *docx.RootDoc
-}
+const HeadingSize = 36
 
-// newDocxBuilder returns a docxBuilder for building the given [Manuscript]
-// into a DOCX file of the given name. The font and color for the document will
-// be Times New Roman and #000000 respectively.
-func newDocxBuilder(name string, ms *Manuscript, chapters ...string) (*docxBuilder, error) {
-	doc, err := godocx.NewDocument()
+func BuildCover(doc domain.Document, ms *Manuscript) error {
+	for i := 0; i < 10; i++ {
+		if _, err := doc.AddParagraph(); err != nil {
+			return err
+		}
+	}
+
+	for i, txt := range []string{ms.DocTitle(), "by", ms.Author()} {
+		p, err := doc.AddParagraph()
+
+		if err != nil {
+			return err
+		}
+
+		if err := p.SetAlignment(domain.AlignmentCenter); err != nil {
+			return err
+		}
+
+		r, err := p.AddRun()
+
+		if err != nil {
+			return err
+		}
+
+		if err := r.SetText(txt); err != nil {
+			return err
+		}
+
+		if err := r.SetSize(HeadingSize); err != nil {
+			return err
+		}
+
+		if i == 0 {
+			if err := r.SetBold(true); err != nil {
+				return err
+			}
+			continue
+		}
+
+		if err := r.SetItalic(true); err != nil {
+			return err
+		}
+	}
+
+	s, err := doc.DefaultSection()
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return &docxBuilder{
-		name:     name,
-		font:     "Times New Roman",
-		color:    "#000000",
-		ms:       ms,
-		chapters: chapters,
-		doc:      doc,
-	}, nil
-}
+	ftr, err := s.Footer(domain.FooterDefault)
 
-// paragraphProp returns the [ctypes.ParagaphProp] for a paragraph, this will
-// be configured with the appropriate line height, which will be double spacing
-// or close to.
-func (b *docxBuilder) paragraphProp() *ctypes.ParagraphProp {
-	line := 500
-	after := uint64(0)
-
-	prop := ctypes.DefaultParaProperty()
-	prop.Spacing = &ctypes.Spacing{
-		Line:  &line,
-		After: &after,
+	if err != nil {
+		return err
 	}
-	return prop
-}
 
-// defaultRun returns the [docx.Run] to be applied to a paragraph, this will
-// ensure the font and color will match the default, and set the font size to
-// the given size.
-func (b *docxBuilder) defaultRun(r *docx.Run, size uint64) *docx.Run {
-	r.Font(b.font)
-	r.Color(b.color)
-	r.Size(size)
+	p, err := ftr.AddParagraph()
 
-	return r
-}
-
-func (b *docxBuilder) buildItalics(p *docx.Paragraph, sc *Scanner, size uint64) {
-	var buf bytes.Buffer
-
-loop:
-	for {
-		tok := sc.Next()
-
-		if tok == nil {
-			break
-		}
-
-		switch v := tok.(type) {
-		case *Inline:
-			if v.Escape == "PREV" {
-				break loop
-			}
-		case *Text:
-			buf.WriteString(v.Value)
-		}
+	if err != nil {
+		return err
 	}
-	b.defaultRun(p.AddText(buf.String()), size).Italic(true)
+
+	p.SetAlignment(domain.AlignmentRight)
+
+	r, err := p.AddRun()
+
+	if err != nil {
+		return err
+	}
+
+	r.SetText(fmt.Sprintf("© %d %s", time.Now().Year(), ms.Author()))
+	return nil
 }
 
-func (b *docxBuilder) buildText(p *docx.Paragraph, txt string, size uint64) {
+func BuildText(p domain.Paragraph, txt string) error {
 	sc := Scanner{
 		Tokens: Tokenize(txt),
 	}
 
-	for {
-		tok := sc.Next()
+	tok := sc.Next()
 
-		if tok == nil {
-			break
-		}
-
+	for tok != nil {
 		switch v := tok.(type) {
 		case *Inline:
+			r, err := p.AddRun()
+
+			if err != nil {
+				return err
+			}
+
 			switch v.Escape {
-			case "IT":
-				b.buildItalics(p, &sc, size)
+			case "IT", "BD", "BDI":
+				switch v.Escape {
+				case "IT":
+					r.SetItalic(true)
+				case "BD":
+					r.SetBold(true)
+				case "BDI":
+					r.SetItalic(true)
+					r.SetBold(true)
+				}
+
+				tok = sc.Next()
+
+			inner:
+				for tok != nil {
+					switch v := tok.(type) {
+					case *Inline:
+						if v.Escape == "PREV" {
+							break inner
+						}
+					case *Text:
+						r.SetText(v.Value)
+					}
+					tok = sc.Next()
+				}
 			case "lq":
-				fallthrough
+				r, err := p.AddRun()
+
+				if err != nil {
+					return err
+				}
+				r.SetText("“")
 			case "rq":
-				b.defaultRun(p.AddText("\""), size)
-			}
-		case *Text:
-			b.defaultRun(p.AddText(v.Value), size)
-		}
-	}
-}
+				r, err := p.AddRun()
 
-func (b *docxBuilder) buildEpigraph(sc *Scanner) {
-loop:
-	for {
-		tok := sc.Next()
-
-		if tok == nil {
-			break
-		}
-
-		switch v := tok.(type) {
-		case *Macro:
-			switch v.Name {
-			case "EPIGRAPH":
-				if len(v.Args) > 0 && v.Args[0] == "OFF" {
-					break loop
+				if err != nil {
+					return err
 				}
+				r.SetText("”")
 			}
 		case *Text:
-			p := b.doc.AddParagraph("")
-			p.GetCT().Property = b.paragraphProp()
-			p.Justification(stypes.JustificationCenter)
-			b.buildText(p, v.Value, 10)
+			r, err := p.AddRun()
+
+			if err != nil {
+				return err
+			}
+			r.SetText(v.Value)
 		}
+		tok = sc.Next()
 	}
+	return nil
 }
 
-func (b *docxBuilder) buildParagraph(sc *Scanner, indent bool) {
-	p := b.doc.AddParagraph("")
-	p.GetCT().Property = b.paragraphProp()
+const (
+	LineSpacing = 480
+	ParaIndent  = 567
+)
 
-	start := true
+func WriteToDOCX(name string, ms *Manuscript) error {
+	doc := docx.NewDocument()
+	doc.SetMetadata(&domain.Metadata{
+		Title:   ms.DocTitle(),
+		Creator: ms.Author(),
+		Created: time.Now().Format(time.RFC3339),
+	})
 
-	var buf bytes.Buffer
+	s, err := doc.DefaultSection()
 
-loop:
-	for {
-		tok := sc.Next()
-
-		if tok == nil {
-			break
-		}
-
-		switch v := tok.(type) {
-		case *Macro:
-			switch v.Name {
-			case "DROPCAP":
-				if len(v.Args) > 0 {
-					buf.WriteString(v.Args[0])
-				}
-			case "RIGHT":
-				p.Justification(stypes.JustificationRight)
-			case "PP":
-				sc.Back()
-				break loop
-			}
-		case *Text:
-			// There could be multiple Text tokens to a paragraph,
-			// therefore only indent if this is the first Text token
-			// and if indent is set to true.
-			if start && indent {
-				buf.WriteString("\t")
-				start = false
-			}
-			buf.WriteString(v.Value)
-			buf.WriteString(" ")
-		}
+	if err != nil {
+		return err
 	}
-	b.buildText(p, strings.TrimSuffix(buf.String(), " "), 12)
-}
 
-func (b *docxBuilder) buildChapter(ch *Chapter) error {
-	if number := ch.Number(); number != "" {
-		hdr, err := b.doc.AddHeading("", 1)
+	s.SetPageSize(domain.PageSizeA4)
+
+	type FontSetter interface {
+		SetDefaultFont(string) error
+	}
+
+	if f, ok := doc.(FontSetter); ok {
+		f.SetDefaultFont("Times New Roman")
+	}
+
+	type FontSize interface {
+		SetDefaultFontSize(int) error
+	}
+
+	if f, ok := doc.(FontSize); ok {
+		f.SetDefaultFontSize(24)
+	}
+
+	if err := BuildCover(doc, ms); err != nil {
+		return err
+	}
+
+	s2, err := doc.AddSectionWithBreak(domain.SectionBreakTypeNextPage)
+
+	if err != nil {
+		return err
+	}
+
+	ftr, err := s2.Footer(domain.FooterDefault)
+
+	if err != nil {
+		return err
+	}
+
+	ftrPara, err := ftr.AddParagraph()
+
+	if err != nil {
+		return err
+	}
+
+	if err := ftrPara.SetAlignment(domain.AlignmentCenter); err != nil {
+		return err
+	}
+
+	for i := 0; i < 3; i++ {
+		r, err := ftrPara.AddRun()
 
 		if err != nil {
 			return err
 		}
 
-		line := 0
-
-		hdr.GetCT().Property = b.paragraphProp()
-		hdr.GetCT().Property.Spacing = &ctypes.Spacing{
-			Line: &line,
+		switch i {
+		case 0:
+			err = r.AddField(docx.NewPageNumberField())
+		case 1:
+			err = r.AddText(" of ")
+		case 2:
+			err = r.AddField(docx.NewPageCountField())
 		}
-		hdr.Justification(stypes.JustificationCenter)
-
-		run := hdr.AddText(number)
-
-		run = b.defaultRun(run, 18)
-		run.Bold(true)
-	}
-
-	if title := ch.Title(); title != "" {
-		hdr, err := b.doc.AddHeading("", 1)
 
 		if err != nil {
 			return err
 		}
-
-		hdr.GetCT().Property = b.paragraphProp()
-		hdr.Justification(stypes.JustificationCenter)
-
-		run := hdr.AddText(title)
-
-		run = b.defaultRun(run, 18)
-		run.Bold(true)
-		run.Italic(true)
 	}
 
 	sc := Scanner{
-		Tokens: ch.Tokens,
+		Tokens: ms.Tokens,
 	}
 
-	indent := false
+	var buf bytes.Buffer
 
-	for {
-		tok := sc.Next()
+	firstPara := true
 
-		if tok == nil {
-			break
-		}
+	tok := sc.Next()
 
+	for tok != nil {
 		if m, ok := tok.(*Macro); ok {
 			switch m.Name {
+			case "CHAPTER":
+				str := "CHAPTER"
+
+				if tok := sc.Peek(); tok != nil {
+					if m, ok := tok.(*Macro); ok && m.Name == "CHAPTER_STRING" {
+						str = m.Arg(0)
+						sc.Next()
+					}
+				}
+
+				p, err := doc.AddParagraph()
+
+				if err != nil {
+					return err
+				}
+
+				p.SetLineSpacing(domain.LineSpacing{
+					Value: LineSpacing,
+				})
+
+				if err := p.SetAlignment(domain.AlignmentCenter); err != nil {
+					return err
+				}
+
+				r, err := p.AddRun()
+
+				if err != nil {
+					return err
+				}
+
+				if err := r.SetSize(HeadingSize); err != nil {
+					return err
+				}
+
+				if err := r.SetText(fmt.Sprintf("%s %s", str, m.Arg(0))); err != nil {
+					return err
+				}
+
+				if err := r.SetBold(true); err != nil {
+					return err
+				}
+			case "CHAPTER_TITLE":
+				p, err := doc.AddParagraph()
+
+				if err != nil {
+					return err
+				}
+
+				p.SetLineSpacing(domain.LineSpacing{
+					Value: LineSpacing,
+				})
+
+				if err := p.SetAlignment(domain.AlignmentCenter); err != nil {
+					return err
+				}
+
+				r, err := p.AddRun()
+
+				if err != nil {
+					return err
+				}
+
+				if err := r.SetSize(HeadingSize); err != nil {
+					return err
+				}
+
+				if err := r.SetText(m.Arg(0)); err != nil {
+					return err
+				}
+
+				if err := r.SetBold(true); err != nil {
+					return err
+				}
+
+				if err := r.SetItalic(true); err != nil {
+					return err
+				}
 			case "EPIGRAPH":
-				b.buildEpigraph(&sc)
+				tok = sc.Next()
+
+			epiLoop:
+				for tok != nil {
+					switch v := tok.(type) {
+					case *Macro:
+						if v.Name == "EPIGRAPH" {
+							break epiLoop
+						}
+					case *Text:
+						if v.Value != "" {
+							p, err := doc.AddParagraph()
+
+							if err != nil {
+								return err
+							}
+
+							p.SetLineSpacing(domain.LineSpacing{
+								Value: LineSpacing,
+							})
+
+							if err := p.SetAlignment(domain.AlignmentCenter); err != nil {
+								return err
+							}
+
+							if err := BuildText(p, v.Value); err != nil {
+								return err
+							}
+						}
+					}
+					tok = sc.Next()
+				}
 			case "PP":
-				b.buildParagraph(&sc, indent)
-				indent = true
+				if tok := sc.Peek(); tok != nil {
+					if m, ok := tok.(*Macro); ok {
+						switch m.Name {
+						case "DROPCAP":
+							buf.WriteString(m.Arg(0))
+							sc.Next()
+						case "PP":
+							tok = sc.Next()
+							continue
+						}
+					}
+				}
+
+				tok = sc.Next()
+
+				p, err := doc.AddParagraph()
+
+				if err != nil {
+					return err
+				}
+
+				if !firstPara {
+					p.SetIndent(domain.Indentation{
+						FirstLine: ParaIndent,
+					})
+				}
+
+				p.SetLineSpacing(domain.LineSpacing{
+					Value: LineSpacing,
+				})
+
+			paraLoop:
+				for tok != nil {
+					switch v := tok.(type) {
+					case *Macro:
+						if v.Name == "PP" {
+							firstPara = false
+							sc.Back()
+							break paraLoop
+						}
+						if v.Name == "COLLATE" {
+							firstPara = true
+							sc.Back()
+							break paraLoop
+						}
+						if v.Name == "RIGHT" {
+							p.SetAlignment(domain.AlignmentRight)
+						}
+					case *Text:
+						buf.WriteString(v.Value)
+						buf.WriteString(" ")
+					}
+					tok = sc.Next()
+				}
+
+				if err := BuildText(p, strings.TrimSuffix(buf.String(), " ")); err != nil {
+					return err
+				}
+				buf.Reset()
+			case "COLLATE":
+				firstPara = true
+
+				if err := doc.AddPageBreak(); err != nil {
+					return err
+				}
 			}
 		}
-	}
-	return nil
-}
-
-func (b *docxBuilder) buildTitlePage() error {
-	b.doc.Document.Body.SectPr.TitlePg = &ctypes.GenSingleStrVal[stypes.OnOff]{
-		Val: stypes.OnOffOn,
+		tok = sc.Next()
 	}
 
-	// Precede with blank paragraphs so that the title is centered.
-	for i := 0; i < 10; i++ {
-		b.doc.AddParagraph("")
-	}
-
-	title, err := b.doc.AddHeading("", 0)
-
-	if err != nil {
-		return err
-	}
-
-	title.Justification(stypes.JustificationCenter)
-
-	after := uint64(0)
-
-	ct := title.GetCT()
-	ct.Property.Border = &ctypes.ParaBorder{
-		Bottom: &ctypes.Border{},
-	}
-	ct.Property.Spacing = &ctypes.Spacing{
-		After: &after,
-	}
-
-	run := title.AddText(b.ms.DocTitle())
-
-	run = b.defaultRun(run, 18)
-	run.Bold(true)
-	run.Italic(true)
-
-	for _, s := range []string{"by", b.ms.Author()} {
-		p := b.doc.AddParagraph("")
-		p.Justification(stypes.JustificationCenter)
-		p.GetCT().Property.Spacing = &ctypes.Spacing{
-			After: &after,
-		}
-
-		run := p.AddText(s)
-
-		run = b.defaultRun(run, 12)
-		run.Italic(true)
-	}
-
-	b.doc.AddPageBreak()
-
-	return nil
-}
-
-func (b *docxBuilder) build() error {
-	margin := 1300
-
-	b.doc.Document.Body.SectPr.PageMargin.Left = &margin
-	b.doc.Document.Body.SectPr.PageMargin.Right = &margin
-
-	if err := b.buildTitlePage(); err != nil {
-		return err
-	}
-
-	chapters, err := b.ms.Chapters()
-
-	if err != nil {
-		return err
-	}
-
-	for i, ch := range chapters {
-		if err := b.buildChapter(ch); err != nil {
-			return err
-		}
-
-		if i != len(chapters)-1 {
-			b.doc.AddPageBreak()
-		}
-	}
-
-	if err := b.doc.SaveTo(b.name); err != nil {
+	if err := doc.SaveAs(name); err != nil {
 		return err
 	}
 	return nil

@@ -117,33 +117,27 @@ func pubCmd(cmd *Command, args []string) error {
 		}
 	}
 
+	dir := filepath.Dir(file)
+
+	// Change into the directory of the source file being published. This is done
+	// to ensure that relative paths used via PDF_IMAGE, and such other macros,
+	// do not cause errors when being processed into PDF.
+	if err := os.Chdir(dir); err != nil {
+		return err
+	}
+
 	switch format {
 	case "docx":
-		dir := filepath.Dir(file)
-
-		if err := os.Chdir(dir); err != nil {
-			return err
+		if err := os.Remove(name); err != nil {
+			if !errors.Is(err, os.ErrNotExist) {
+				return err
+			}
 		}
 
-		docx, err := newDocxBuilder(name, ms, args...)
-
-		if err != nil {
-			return err
-		}
-
-		if err := docx.build(); err != nil {
+		if err := WriteToDOCX(name, ms); err != nil {
 			return err
 		}
 	case "pdf":
-		// Passing full filepaths to the pub command is valid. However, this can
-		// sometimes fail, if the given manuscript makes use of PDF_IMAGE which
-		// takes relative filepaths. Changing into the source directory of the
-		// file being published ensures failures because of this do not happen.
-		dir := filepath.Dir(file)
-
-		if err := os.Chdir(dir); err != nil {
-			return err
-		}
 
 		tmp, err := os.CreateTemp("", name)
 
@@ -175,7 +169,7 @@ func pubCmd(cmd *Command, args []string) error {
 			return err
 		}
 	default:
-		return errors.New("unrecognized publish format")
+		return errors.New("unrecognized publish format, must be one of: [docx, pdf]")
 	}
 	return nil
 }
