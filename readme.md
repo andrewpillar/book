@@ -139,8 +139,8 @@ This flag also works with specified chapters too,
 
 ## PDF
 
-The PDF format requires [groff][]. If using Linux, then this should already be
-installed, along with the mom macro set.
+The PDF format requires [groff][] with the mom macro set. If using Linux or
+MacOS, then this will already be installed.
 
 [groff]: https://www.gnu.org/software/groff/
 
