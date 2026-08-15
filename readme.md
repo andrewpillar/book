@@ -149,7 +149,6 @@ To publish in the PDF format, simply specify it via the `-f` flag with the `pub`
 command,
 
     $ book pub -f pdf dracula.mom
-    dracula.pdf
 
 Under the hood this runs the following pfdmom command,
 
