@@ -1,7 +1,7 @@
 package main
 
 import (
-	"crypto/sha256"
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -53,13 +53,10 @@ func TestManuscript(t *testing.T) {
 		t.Fatalf("os.ReadFile(%q): %v\n", file, err)
 	}
 
-	want := sha256.New()
-	want.Write(b)
+	var buf bytes.Buffer
+	ms.WriteTo(&buf)
 
-	got := sha256.New()
-	ms.WriteTo(got)
-
-	if diff := cmp.Diff(want.Sum(nil), got.Sum(nil)); diff != "" {
+	if diff := cmp.Diff(string(b), buf.String()); diff != "" {
 		t.Fatalf("ms.WriteTo() mismatch (-want +got):\n%s", diff)
 	}
 }

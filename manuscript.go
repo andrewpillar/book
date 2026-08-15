@@ -172,6 +172,10 @@ func (t *Text) WriteTo(w io.Writer) error {
 	return nil
 }
 
+type Comment struct {
+	*Text
+}
+
 const emDash = "—"
 
 func (t *Text) Words() []string {
@@ -353,6 +357,17 @@ func ParseManuscript(name string) (*Manuscript, error) {
 
 				toks = append(toks, &m)
 				continue
+			}
+
+			if line[0] == '\\' {
+				if len(line) > 1 {
+					if line[1] == '#' {
+						toks = append(toks, Comment{
+							Text: &Text{Value: line},
+						})
+						continue
+					}
+				}
 			}
 		}
 
