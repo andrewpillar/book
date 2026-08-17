@@ -26,7 +26,7 @@ NO CHAPTERS EXAMPLE
 		{
 			[]string{"-wc"},
 			`CHAPTERS EXAMPLE         8
-DRACULA             11,354
+DRACULA             11,219
 NO CHAPTERS EXAMPLE      2
 `,
 		},

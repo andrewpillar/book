@@ -356,3 +356,75 @@ func TestTokenize(t *testing.T) {
 		})
 	}
 }
+
+func TestTextWords(t *testing.T) {
+	tests := []struct {
+		str  string
+		want []string
+	}{
+		{
+			"word word.",
+			[]string{"word", "word"},
+		},
+		{
+			"word—",
+			[]string{"word"},
+		},
+		{
+			"word”—word",
+			[]string{"word", "word"},
+		},
+		{
+			"word—word—word",
+			[]string{"word", "word", "word"},
+		},
+		{
+			"word word—",
+			[]string{"word", "word"},
+		},
+		{
+			`word—" word`,
+			[]string{`word`, "word"},
+		},
+		{
+			"—word—word",
+			[]string{"word", "word"},
+		},
+		{
+			`word, "—word word"`,
+			[]string{"word", `word`, `word`},
+		},
+		{
+			"word. word—word—",
+			[]string{"word", "word", "word"},
+		},
+		{
+			`word... word...word, word`,
+			[]string{"word", "word", "word", "word"},
+		},
+		{
+			`word. word—word...word`,
+			[]string{"word", "word", "word", "word"},
+		},
+		{
+			`word...," word`,
+			[]string{`word`, "word"},
+		},
+		{
+			`"—word—", word word...word...word "word...," word`,
+			[]string{`word`, "word", "word", "word", "word", `word`, "word"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.str, func(t *testing.T) {
+			txt := Text{
+				Value: test.str,
+			}
+
+			if diff := cmp.Diff(test.want, txt.Words()); diff != "" {
+				t.Errorf("txt.Words() = %v, want = %v", txt.Words(), test.want)
+			}
+		})
+	}
+}

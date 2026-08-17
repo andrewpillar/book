@@ -1,13 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"slices"
 	"strconv"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -176,18 +177,79 @@ type Comment struct {
 	*Text
 }
 
-const emDash = "—"
-
+// Words returns a slice of all the words in the Text token. A word in this case
+// is any sequence of runes that is considered a letter via [unicode.IsLetter].
+// This will split words on spaces and em-dashes.
 func (t *Text) Words() []string {
 	if t.Value == "" || t.Value == " " {
 		return nil
 	}
 
-	words := strings.Split(strings.TrimSpace(t.Value), " ")
+	toks := Tokenize(t.Value)
 
-	for i, word := range words {
-		if strings.Contains(word, emDash) {
-			words = slices.Insert(words, i, strings.Split(word, emDash)...)
+	var buf bytes.Buffer
+
+	// Strip inline escape macros from the text.
+	for _, tok := range toks {
+		if txt, ok := tok.(*Text); ok {
+			buf.WriteString(txt.Value)
+		}
+	}
+
+	words := make([]string, 0)
+	tmp := make([]rune, 0)
+
+	for {
+		r, _, err := buf.ReadRune()
+
+		if errors.Is(err, io.EOF) {
+			if len(tmp) > 0 {
+				words = append(words, string(tmp))
+			}
+			break
+		}
+
+		switch r {
+		case ' ', '—':
+			if len(tmp) > 0 {
+				words = append(words, string(tmp))
+			}
+			tmp = tmp[0:0]
+		case '.':
+			for {
+				r, _, err = buf.ReadRune()
+
+				if errors.Is(err, io.EOF) {
+					if len(tmp) > 0 {
+						words = append(words, string(tmp))
+						tmp = tmp[0:0]
+					}
+					break
+				}
+
+				if r == ' ' {
+					buf.UnreadRune()
+					break
+				}
+
+				if unicode.IsLetter(r) {
+					buf.UnreadRune()
+
+					if len(tmp) > 0 {
+						words = append(words, string(tmp))
+						tmp = tmp[0:0]
+					}
+					break
+				}
+
+				if unicode.IsLetter(r) {
+					tmp = append(tmp, r)
+				}
+			}
+		default:
+			if unicode.IsLetter(r) {
+				tmp = append(tmp, r)
+			}
 		}
 	}
 	return words
