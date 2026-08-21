@@ -1,31 +1,52 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"flag"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 )
 
 var PubCmd = &Command{
-	Usage: "pub <-f docx|pdf> <-wc count> <file> [chapter,...]",
-	Short: "publish the manuscript into a pdf",
-	Long: `Publish the manuscript into the given format, either docx or pdf as specified via
-the -f flag. If pdf, then pfdmom is used under the hood to produce the final pdf.`,
+	Usage: "pub <-f docx|pdf> <-wc count> <-o file> <-v> <file> [chapter,...]",
+	Short: "publish the manuscript into a pdf or docx file",
+	Long: `Publish the manuscript as the given format, either docx or pdf as specified via
+the -f flag. If pdf, then pdfmom is used under the hood to produce the final
+pdf.
+
+The -wc flag can be given to only publish the first N words of the manuscript.
+If given alongside a chapter, then the word count limit will be applied from
+that chapter onwards.
+
+The -o flag can be given to control the output name of the file. By default the
+output name of the final file will be the name of the manuscript, suffixed with
+the format, either pdf or docx.
+
+The -o flag takes placeholder strings to better control the formatting of the
+filename,
+
+    %T - The title of the manuscript
+    %A - The author of the manuscript
+`,
+
 	Run: pubCmd,
 }
 
 func pubCmd(cmd *Command, args []string) error {
 	var (
-		format string
-		wc     int
+		format  string
+		wc      int
+		out     string
+		verbose bool
 	)
 
 	fs := flag.NewFlagSet(cmd.Argv0, flag.ExitOnError)
 	fs.StringVar(&format, "f", "", "the format to publish in, either docx or pdf")
 	fs.IntVar(&wc, "wc", 0, "the number of words to publish")
+	fs.StringVar(&out, "o", "", "write to file instead of the default")
+	fs.BoolVar(&verbose, "v", false, "print the name of the file once published")
 	fs.Parse(args)
 
 	args = fs.Args()
@@ -46,9 +67,6 @@ func pubCmd(cmd *Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
-	name := filepath.Base(file)
-	name = name[:len(name)-4]
 
 	// If chapters have been given, then make sure the manuscript only
 	// contains that chapters we want to publish.
@@ -73,15 +91,38 @@ func pubCmd(cmd *Command, args []string) error {
 		for _, ch := range chapters {
 			toks = append(toks, ch.Tokens...)
 		}
-
-		if len(chapters) > 1 {
-			name += "-chapters-"
-			name += strconv.Itoa(chapters[0].Count) + "-to-"
-			name += strconv.Itoa(chapters[len(chapters)-1].Count)
-		} else {
-			name += "-chapter-" + strconv.Itoa(chapters[0].Count)
-		}
 		ms.Tokens = toks
+	}
+
+	name := file[:len(file)-4] + "." + format
+
+	if out != "" {
+		var namebuf bytes.Buffer
+
+		outbuf := BufferString(out)
+
+		r := outbuf.Get()
+
+	loop:
+		for r != -1 {
+			if r == '%' {
+				switch outbuf.Get() {
+				case -1:
+					break loop
+				case 'T':
+					namebuf.WriteString(ms.DocTitle())
+				case 'A':
+					namebuf.WriteString(ms.Author())
+				}
+
+				r = outbuf.Get()
+				continue
+			}
+
+			namebuf.WriteRune(r)
+			r = outbuf.Get()
+		}
+		name = namebuf.String() + "." + format
 	}
 
 	if wc > 0 {
@@ -98,13 +139,8 @@ func pubCmd(cmd *Command, args []string) error {
 				sum += len(txt.Words())
 			}
 		}
-
-		name += "-first-" + strconv.Itoa(wc) + "-words"
-
 		ms.Tokens = ms.Tokens[:pos]
 	}
-
-	name += "." + format
 
 	// In the case of publishing a single chapter we want to remove the
 	// trailing COLLATE macro. With this in place it will add an additional
@@ -170,6 +206,10 @@ func pubCmd(cmd *Command, args []string) error {
 		}
 	default:
 		return errors.New("unrecognized publish format, must be one of: [docx, pdf]")
+	}
+
+	if verbose {
+		cmd.Println(name)
 	}
 	return nil
 }

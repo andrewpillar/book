@@ -9,7 +9,7 @@ import (
 
 var CleanCmd = &Command{
 	Usage: "clean",
-	Short: "remove pdf files for manuscripts",
+	Short: "remove pdf and docx files for manuscripts",
 	Long: `Remove the DOCX and PDF files for the published manuscripts.
 
 The -v flag will print out the names of each file deleted.`,
