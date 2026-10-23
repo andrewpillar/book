@@ -155,12 +155,15 @@ func pubCmd(cmd *Command, args []string) error {
 
 	dir := filepath.Dir(file)
 
-	// Change into the directory of the source file being published. This is done
-	// to ensure that relative paths used via PDF_IMAGE, and such other macros,
-	// do not cause errors when being processed into PDF.
+	// Change into the directory of the source file being published. This ensures
+	// any relative paths used in INCLUDE and PDF_IMAGE macros remain correct.
 	if err := os.Chdir(dir); err != nil {
 		return err
 	}
+
+	// Since we're now in the same directory as the file itself, we can discard
+	// the absolutepath, and use the base.
+	name = filepath.Base(name)
 
 	switch format {
 	case "docx":
@@ -174,7 +177,6 @@ func pubCmd(cmd *Command, args []string) error {
 			return err
 		}
 	case "pdf":
-
 		tmp, err := os.CreateTemp("", name)
 
 		if err != nil {

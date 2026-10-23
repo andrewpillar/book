@@ -20,6 +20,7 @@ func TestLs(t *testing.T) {
 			nil,
 			`CHAPTERS EXAMPLE
 DRACULA
+INCLUDE EXAMPLE
 NO CHAPTERS EXAMPLE
 `,
 		},
@@ -27,6 +28,7 @@ NO CHAPTERS EXAMPLE
 			[]string{"-wc"},
 			`CHAPTERS EXAMPLE         8
 DRACULA             11,219
+INCLUDE EXAMPLE          6
 NO CHAPTERS EXAMPLE      2
 `,
 		},
@@ -52,6 +54,12 @@ Chapter II
 			`  1 THE FIRST       4
   2 THE SECOND      2
   3 THE THIRD       2
+`,
+		},
+		{
+			[]string{"include.mom"},
+			`THE FIRST
+THE SECOND
 `,
 		},
 	}

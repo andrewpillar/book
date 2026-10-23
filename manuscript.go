@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"unicode"
@@ -415,6 +416,19 @@ func ParseManuscript(name string) (*Manuscript, error) {
 				if len(tmp) > 0 {
 					m.Args = append(m.Args, string(tmp))
 					tmp = tmp[0:0]
+				}
+
+				if m.Name == "INCLUDE" || m.Name == "so" {
+					path := filepath.Join(filepath.Dir(name), m.Arg(0))
+
+					ms, err := ParseManuscript(path)
+
+					if err != nil {
+						return nil, err
+					}
+
+					toks = append(toks, ms.Tokens...)
+					continue
 				}
 
 				toks = append(toks, &m)

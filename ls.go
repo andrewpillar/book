@@ -61,6 +61,10 @@ func lsCmd(cmd *Command, args []string) error {
 		for _, b := range books {
 			title := b.DocTitle()
 
+			if title == "" {
+				continue
+			}
+
 			if wc {
 				if n := pad - utf8.RuneCountInString(title); n > 0 {
 					title += strings.Repeat(" ", n)
