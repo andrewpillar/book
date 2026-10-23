@@ -82,14 +82,12 @@ func newCmd(cmd *Command, args []string) error {
 	defer f.Close()
 
 	var data struct {
-		Title      string
-		PrintStyle string
-		Author     string
-		Year       int
+		Title  string
+		Author string
+		Year   int
 	}
 
 	data.Title = args[0]
-	data.PrintStyle = "TYPESET"
 	data.Author = author
 	data.Year = time.Now().Year()
 

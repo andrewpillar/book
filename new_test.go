@@ -38,8 +38,10 @@ func TestNew(t *testing.T) {
 		t.Fatalf("GitUser(): %v\n", err)
 	}
 
-	want := fmt.Sprintf(`.DOCTITLE   "TestNew"
-.PRINTSTYLE "TYPESET"
+	want := fmt.Sprintf(`.ds STYLE TYPESET
+
+.DOCTITLE   "%s"
+.PRINTSTYLE "\*[STYLE]"
 .AUTHOR     "%s"
 .TITLE      DOC_COVER "\*[$DOCTITLE]"
 .PDF_TITLE  "\*[$AUTHOR] - \*[$DOCTITLE]"
@@ -52,8 +54,14 @@ func TestNew(t *testing.T) {
 .HEADER_RECTO CENTER "\E*[$AUTHOR]"
 .HEADER_VERSO CENTER "\E*[$DOCTITLE]"
 
+.if '\*[STYLE]'TYPESET' .T_MARGIN 1i
+.if '\*[STYLE]'TYPESET' .B_MARGIN 1i
+.if '\*[STYLE]'TYPESET' .L_MARGIN 0.75i
+.if '\*[STYLE]'TYPESET' .R_MARGIN 0.75i
 
-`, author, time.Now().Year())
+.if '\*[STYLE]'TYPESET' .PT_SIZE 10
+
+`, t.Name(), author, time.Now().Year())
 
 	if diff := cmp.Diff(want, string(b)); diff != "" {
 		t.Fatalf("%q mismatch (-want +got):\n%s", path, diff)
