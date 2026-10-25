@@ -40,6 +40,8 @@ func TestNew(t *testing.T) {
 
 	want := fmt.Sprintf(`.ds STYLE TYPESET
 
+.if '\*[STYLE]'TYPESET' .PAPER A5
+
 .DOCTITLE   "%s"
 .PRINTSTYLE "\*[STYLE]"
 .AUTHOR     "%s"
