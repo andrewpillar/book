@@ -34,6 +34,15 @@ filename,
 	Run: pubCmd,
 }
 
+func sentenceEndPos(s string) int {
+	i := bytes.IndexRune([]byte(s), '.')
+
+	if i > -1 {
+		return i
+	}
+	return bytes.IndexRune([]byte(s), '—')
+}
+
 func pubCmd(cmd *Command, args []string) error {
 	var (
 		format  string
@@ -139,6 +148,31 @@ func pubCmd(cmd *Command, args []string) error {
 				sum += len(txt.Words())
 			}
 		}
+
+		end := ms.Tokens[pos]
+
+		if txt, ok := end.(*Text); ok {
+			i := sentenceEndPos(txt.Value)
+
+			for i < 0 {
+				pos++
+
+				txt, ok = ms.Tokens[pos].(*Text)
+
+				if !ok {
+					break
+				}
+				i = sentenceEndPos(txt.Value)
+			}
+
+			txt.Value = txt.Value[:i+1]
+
+			ms.Tokens[pos] = txt
+
+			// Increment by one so we include the actual end token.
+			pos++
+		}
+
 		ms.Tokens = ms.Tokens[:pos]
 	}
 
