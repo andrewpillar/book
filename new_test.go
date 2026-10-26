@@ -32,10 +32,10 @@ func TestNew(t *testing.T) {
 		t.Fatalf("os.ReadFile(%q): %v\n", path, err)
 	}
 
-	author, err := GitUserName()
+	author, err := GetAuthor()
 
 	if err != nil {
-		t.Fatalf("GitUser(): %v\n", err)
+		t.Fatalf("GetAuthor(): %v\n", err)
 	}
 
 	want := fmt.Sprintf(`.ds STYLE TYPESET

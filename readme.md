@@ -34,15 +34,20 @@ within a git repository.
     $ book new "DRACULA"
 
 The newly created `.mom` file will be populated with the given title, copyright
-information, and the authorship taken from the git configuration,
+information, and the author. The author information will either be taken from
+the git configuration, if it exists, or from the username of the current user.
 
     $ cat dracula.mom
-    .DOCTITLE   "DRACULA"
-    .PRINTSTYLE "TYPESET"
-    .AUTHOR     "Bram Stoker"
+    .ds STYLE TYPESET
+
+    .if '\*[STYLE]'TYPESET' .PAPER A5
+
+    .DOCTITLE   "{{.Title}}"
+    .PRINTSTYLE "\*[STYLE]"
+    .AUTHOR     "{{.Author}}"
     .TITLE      DOC_COVER "\*[$DOCTITLE]"
     .PDF_TITLE  "\*[$AUTHOR] - \*[$DOCTITLE]"
-    .COPYRIGHT  DOC_COVER "2026 \*[$AUTHOR]"
+    .COPYRIGHT  DOC_COVER "{{.Year}} \*[$AUTHOR]"
     .DOC_COVER  TITLE AUTHOR COPYRIGHT
 
     .RECTO_VERSO
@@ -51,6 +56,12 @@ information, and the authorship taken from the git configuration,
     .HEADER_RECTO CENTER "\E*[$AUTHOR]"
     .HEADER_VERSO CENTER "\E*[$DOCTITLE]"
 
+    .if '\*[STYLE]'TYPESET' .T_MARGIN 1i
+    .if '\*[STYLE]'TYPESET' .B_MARGIN 1i
+    .if '\*[STYLE]'TYPESET' .L_MARGIN 0.75i
+    .if '\*[STYLE]'TYPESET' .R_MARGIN 0.75i
+
+    .if '\*[STYLE]'TYPESET' .PT_SIZE 10
 
 Information of the manuscript can be viewed via the `ls`, and `wc` commands,
 which can be used for listing the chapters and providing a word count,

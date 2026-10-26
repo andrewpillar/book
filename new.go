@@ -4,8 +4,10 @@ import (
 	"bytes"
 	_ "embed"
 	"errors"
+	"io"
 	"os"
 	"os/exec"
+	"os/user"
 	"regexp"
 	"strings"
 	"text/template"
@@ -34,16 +36,21 @@ func slug(s string) string {
 	return strings.ToLower(strings.TrimPrefix(strings.TrimSuffix(s, "-"), "-"))
 }
 
-func GitUserName() (string, error) {
+func GetAuthor() (string, error) {
 	var buf bytes.Buffer
 
 	cmd := exec.Command("git", "config", "user.name")
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = &buf
-	cmd.Stderr = os.Stderr
+	cmd.Stderr = io.Discard
 
 	if err := cmd.Run(); err != nil {
-		return "", err
+		u, err := user.Current()
+
+		if err != nil {
+			return "", err
+		}
+		return u.Username, nil
 	}
 	return buf.String()[:buf.Len()-1], nil
 }
@@ -59,7 +66,7 @@ func newCmd(cmd *Command, args []string) error {
 		return errors.New("EDITOR not set")
 	}
 
-	author, err := GitUserName()
+	author, err := GetAuthor()
 
 	if err != nil {
 		return err
